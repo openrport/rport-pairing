@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
-	"log"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -29,18 +28,13 @@ func TestHandler_ServeHTTP(t *testing.T) {
 	for k, v := range FormFields {
 		var fw io.Writer
 		var err error
-		if fw, err = writer.CreateFormField(k); err != nil {
-			log.Println(err)
-			return
-		}
-		if _, err = io.Copy(fw, strings.NewReader(v)); err != nil {
-			log.Println(err)
-			return
-		}
+		fw, err = writer.CreateFormField(k)
+		require.NoError(t, err)
+		_, err = io.Copy(fw, strings.NewReader(v))
+		require.NoError(t, err)
 	}
-	if err := writer.Close(); err != nil {
-		log.Println(err)
-	}
+	err := writer.Close()
+	require.NoError(t, err)
 	request, _ := http.NewRequest(http.MethodPost, "/", bytes.NewReader(body.Bytes()))
 	request.Header.Set("Content-Type", writer.FormDataContentType())
 	recorder := httptest.NewRecorder()
@@ -48,13 +42,14 @@ func TestHandler_ServeHTTP(t *testing.T) {
 	// Create request handlers
 	depositHandler := &deposit.Handler{Cache: c}
 	depositHandler.ServeHTTP(recorder, request)
-	log.Println("Got response code", recorder.Result().StatusCode)
-	log.Println("Got response body", recorder.Body.String())
+	t.Log("Got response code", recorder.Result().StatusCode)
+	t.Log("Got response body", recorder.Body.String())
 	assert.Equal(t, 200, recorder.Result().StatusCode)
 	var response deposit.Response
-	err := json.Unmarshal(recorder.Body.Bytes(), &response)
+	err = json.Unmarshal(recorder.Body.Bytes(), &response)
 	require.NoError(t, err)
-	log.Println("Got pairing code ", response.PairingCode)
+	t.Log("Got pairing code ", response.PairingCode)
+	// Assert the returned pairing code equals the one stored in the cache
 	_, ok := c.Get(response.PairingCode)
 	assert.True(t, ok, "Pairing code not found in cache")
 }
