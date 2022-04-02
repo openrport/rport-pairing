@@ -1,9 +1,9 @@
 [server]
   ## Defines the IP address and port the HTTP server listens on.
   ## Defaults: "0.0.0.0:8080"
-  address = "127.0.0.1:9978"
+  address = "127.0.0.1:9090"
   ## External URL the pairing service uses
-  url = "https://pairing.example.com"
+  url = "https://pairing.example.local"
 
 [static-deposit]
   ## You can define a static pairing code that won't be looked up in the cache.
