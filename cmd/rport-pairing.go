@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"github.com/cloudradar-monitoring/rport-pairing/cors"
 	"github.com/cloudradar-monitoring/rport-pairing/deposit"
 	"github.com/cloudradar-monitoring/rport-pairing/internal/cache"
@@ -12,7 +13,9 @@ import (
 )
 
 func main() {
-	config := config.New("rport-pairing.conf")
+	confFile := flag.String("c", "rport-pairing.conf", "config file")
+	flag.Parse()
+	config := config.New(*confFile)
 	c := cache.New()
 
 	// Create request handlers
@@ -20,10 +23,12 @@ func main() {
 		Cache:     c,
 		ServerUrl: config.Server.Url,
 	}
-	retrieveHandler := &retrieve.Handler{
-		DummyCode:     config.DummyCode,
+	installerHandler := &retrieve.InstallerHandler{
 		StaticDeposit: config.StaticDeposit,
 		Cache:         c,
+	}
+	updateHandler := &retrieve.UpdateHandler{
+		StaticDeposit: config.StaticDeposit,
 	}
 	corsHandler := &cors.Handler{}
 
@@ -31,8 +36,8 @@ func main() {
 	r := mux.NewRouter()
 	r.PathPrefix("/").Methods("OPTIONS").Handler(corsHandler)
 	r.Path("/").Methods("POST").Handler(depositHandler)
-	r.Path("/update").Methods("GET").Handler(retrieveHandler)
-	r.Path("/{pairingCode:[0-9 a-z A-Z]{7}}").Methods("GET").Handler(retrieveHandler)
+	r.Path("/update").Methods("GET").Handler(updateHandler)
+	r.Path("/{pairingCode:[0-9 a-z A-Z]{7}}").Methods("GET").Handler(installerHandler)
 
 	// Start the server
 	log.Println("Server started on ", config.Server.Address)
