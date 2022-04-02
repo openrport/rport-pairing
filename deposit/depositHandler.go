@@ -15,8 +15,9 @@ import (
 
 var validate *validator.Validate
 
-const alphabet = "abcdefghijklmnpqrstuvwyxzABCDEFGHIJKLMNPQRSTUVWXYZ123456789"
-const ttl = 300 //Cache items lifetime in seconds
+const alphabet = "abcdefghijklmnpqrstuvwyxzABCDEFGHIJKLMNPQRSTUVWXYZ123456789" // Chars used to generate the code
+const ttl = 300 * time.Second                                                  // Cache items aka pairing code lifetime
+const formMaxMem = 256                                                         // Maximum memory bytes used to load form contents for parsing
 
 type Handler struct {
 	Cache     *cache.Cache
@@ -25,7 +26,7 @@ type Handler struct {
 
 func (dh *Handler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	log.Println("Deposit request received")
-	err := r.ParseMultipartForm(256)
+	err := r.ParseMultipartForm(formMaxMem)
 	if err != nil {
 		log.Printf("Error %v\n", err)
 		rw.WriteHeader(http.StatusNotAcceptable)
@@ -46,7 +47,7 @@ func (dh *Handler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := store(deposit, dh.ServerUrl, *dh.Cache)
+	response, err := dh.store(deposit)
 	if err != nil {
 		log.Println("Cache error: ", err)
 		return
@@ -82,20 +83,21 @@ func validateInput(deposit *Deposit) (bool, error) {
 	return false, errors.New(msg)
 }
 
-func store(deposit *Deposit, serverUrl string, cache cache.Cache) (*Response, error) {
+func (dh *Handler) store(deposit *Deposit) (*Response, error) {
 	id, err := gonanoid.Generate(alphabet, 7)
 	if err != nil {
 		return &Response{}, err
 	}
 
-	cache.Set(id, *deposit, ttl*time.Second)
-	t := time.Now().UTC().Add(time.Second * time.Duration(ttl))
+	dh.Cache.Set(id, *deposit, ttl)
 	response := &Response{
 		PairingCode: id,
 	}
-	response.Expires.Timestamp = t.Unix()
-	response.Expires.DateTime = t.Format(time.RFC3339)
-	response.Installers.Linux = fmt.Sprintf("curl -o rport-installer.sh %s/%s && sudo sh rport-installer.sh", serverUrl, id)
-	response.Installers.Windows = fmt.Sprintf("\"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12\\n$url=\\\"%s/%s\\\"\\nInvoke-WebRequest -Uri $url -OutFile \\\"rport-installer.bat\\\"\\nexec rport-installer.bat\"\n    }", serverUrl, id)
+	response.Expires = time.Now().UTC().Add(ttl)
+	response.Installers.Linux = fmt.Sprintf("curl -o rport-installer.sh %s/%s && sudo sh rport-installer.sh", dh.ServerUrl, id)
+	response.Installers.Windows = fmt.Sprintf(`[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$url="%s/%s"
+Invoke-WebRequest -Uri $url -OutFile "rport-installer.ps1"
+rport-installer.ps1`, dh.ServerUrl, id)
 	return response, nil
 }
