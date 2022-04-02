@@ -15,10 +15,17 @@ jobs:
       - name: Go Test
         run: go test -race ./...
 
-      - name: Functional Test
+      - name: Install Dependencies
         shell: bash
         run: |
           set -e
           sudo apt-get update >/dev/null
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y curl jq
-          bash .github/scripts/functional_test.sh
+
+      - name: Functional Test
+        shell: bash
+        run: |
+          set -e
+          pwd
+          ls -la
+          bash -x .github/scripts/functional_test.sh
