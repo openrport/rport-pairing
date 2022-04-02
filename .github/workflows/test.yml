@@ -19,6 +19,6 @@ jobs:
         shell: bash
         run: |
           set -e
-          sudo apt-get update -qq update >/dev/null
+          sudo apt-get update >/dev/null
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y curl jq
           bash .github/scripts/functional_test.sh
