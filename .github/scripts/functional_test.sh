@@ -3,8 +3,9 @@ set -e
 #
 # Do a very simple functional test
 #
-go run cmd/rport-pairing.go  -c ./rport-pairing.conf.example >app.log  2>&1 &
+go run cmd/rport-pairing.go  -c ./rport-pairing.conf.example >app.log 2>&1 &
 sleep 1
+cat app.log
 
 echo "Generating new pairing code"
 curl -sf --location -o response.json \
@@ -25,4 +26,4 @@ curl -fs "http://127.0.0.1:9090/update" 2>&1|grep -q 'END of templates/linux/upd
 echo "Testing Update for Windows"
 curl -fs -H "User-Agent:PowerShell" "http://127.0.0.1:9090/update" 2>&1|grep -q 'END of templates/windows/update.ps1'
 cat app.log
-pkill -f "go run cmd/rport-pairing.go"||true
+pkill -f "rport-pairing"||true
