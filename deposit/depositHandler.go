@@ -25,15 +25,12 @@ type Handler struct {
 }
 
 func (dh *Handler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
-	log.Println("Deposit request received")
 	err := r.ParseMultipartForm(formMaxMem)
 	if err != nil {
 		log.Printf("Error %v\n", err)
 		rw.WriteHeader(http.StatusNotAcceptable)
 		return
 	}
-	log.Printf("%s: %s", "name", r.FormValue("name"))
-
 	deposit := &Deposit{}
 	deposit.ClientId = r.FormValue("client_id")
 	deposit.ConnectUrl = r.FormValue("connect_url")
