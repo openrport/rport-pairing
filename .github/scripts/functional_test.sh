@@ -4,7 +4,11 @@ set -e
 # Do a very simple functional test
 #
 go run cmd/rport-pairing.go  -c ./rport-pairing.conf.example >app.log 2>&1 &
-sleep 1
+for C in $(seq 1 10);do
+  ncat -w1 -z 127.0.0.1 9090 -v && break
+  echo "Waiting for server to come up"
+  sleep 1
+done
 cat app.log
 
 echo "Generating new pairing code"
