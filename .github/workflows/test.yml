@@ -19,6 +19,7 @@ jobs:
         shell: bash
         run: |
           set -e
+          cat /etc/os-release 
           sudo apt-get update >/dev/null
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y curl jq ncat shellcheck
 

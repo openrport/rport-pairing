@@ -26,6 +26,7 @@ grep -q 'END of templates/linux/install.sh' rport-installer.sh
 
 # Check the shell script passes all shellchecks
 echo "Running shellcheck for rport-installer.sh"
+shellcheck -V
 shellcheck rport-installer.sh
 
 # Check by executing the help function
