@@ -21,10 +21,13 @@ cat<<EOF>rportd.conf
   log_level = "debug"
 EOF
 
+echo -n "RPortd "
+./rportd -version
 ./rportd -c rportd.conf &
 for C in $(seq 1 10);do
   ncat -w1 -z 127.0.0.2 8080 && break
   echo "${C}: Waiting for server to come up"
   sleep 1
 done
+echo -n "RPortd pid "
 pidof rportd
