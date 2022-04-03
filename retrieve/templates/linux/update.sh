@@ -52,7 +52,7 @@ restart_rport() {
   else
     RESTART_CMD='systemctl restart rport'
   fi
-  if which at >/dev/null 2>&1; then
+  if command -v at >/dev/null 2>&1; then
     echo "$RESTART_CMD" | at now +1 minute
     echo "Restart of rport scheduled via atd."
   else

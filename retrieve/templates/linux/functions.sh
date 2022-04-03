@@ -6,7 +6,7 @@ set -e
 #       RETURNS:  0 if available, 1 otherwise
 #----------------------------------------------------------------------------------------------------------------------
 is_available() {
-  if which "$1" >/dev/null 2>&1; then
+  if command -v "$1" >/dev/null 2>&1; then
     return 0
   else
     return 1
@@ -162,13 +162,13 @@ check_prerequisites() {
     abort "Execute as root or use sudo."
   fi
 
-  if which sed >/dev/null 2>&1; then
+  if command -v sed >/dev/null 2>&1; then
     true
   else
     abort "sed command missing. Make sure sed is in your path."
   fi
 
-  if which tar >/dev/null 2>&1; then
+  if command -v tar >/dev/null 2>&1; then
     true
   else
     abort "tar command missing. Make sure tar is in your path."
@@ -223,7 +223,7 @@ version_to_int() {
 }
 
 runs_with_selinux() {
-  if which getenforce >/dev/null 2>&1 && getenforce|grep -q Enforcing;then
+  if command -v getenforce >/dev/null 2>&1 && getenforce|grep -q Enforcing;then
     return 0
   else
     return 1
@@ -273,7 +273,7 @@ detect_interpreters() {
   fi
   SEARCH="bash zsh ksh csh python3 python2 perl pwsh fish"
   for ITEM in $SEARCH;do
-    FOUND=$(which "$ITEM" 2>/dev/null||true)
+    FOUND=$(command -v "$ITEM" 2>/dev/null||true)
     if [ -z "$FOUND" ];then
       continue
     fi
