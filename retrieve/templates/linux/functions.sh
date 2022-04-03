@@ -1,3 +1,4 @@
+set -e
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
 #          NAME:  is_available
 #   DESCRIPTION:  Check if a command is available on the system.
@@ -5,7 +6,7 @@
 #       RETURNS:  0 if available, 1 otherwise
 #----------------------------------------------------------------------------------------------------------------------
 is_available() {
-  if which $1 >/dev/null 2>&1; then
+  if which "$1" >/dev/null 2>&1; then
     return 0
   else
     return 1
@@ -19,12 +20,12 @@ is_available() {
 uninstall() {
   if pgrep rportd >/dev/null; then
     echo 1>&2 "You are running the rportd server on this machine. Uninstall manually."
-    exit 1
+    exit 0
   fi
-  systemctl stop rport >/dev/null 2>&1
-  rc-service rport stop >/dev/null 2>&1
-  pkill -9 rport >/dev/null 2>&1
-  rport --service uninstall >/dev/null 2>&1
+  systemctl stop rport >/dev/null 2>&1 || true
+  rc-service rport stop >/dev/null 2>&1 || true
+  pkill -9 rport >/dev/null 2>&1 || true
+  rport --service uninstall >/dev/null 2>&1 || true
   FILES="/usr/local/bin/rport
     /usr/local/bin/rport
     /etc/systemd/system/rport.service
@@ -35,20 +36,19 @@ uninstall() {
     /var/run/rport.pid
     /etc/runlevels/default/rport"
   for FILE in $FILES; do
-    if [ -e $FILE ]; then
-      rm -f $FILE && echo " [ DELETED ] File $FILE"
+    if [ -e "$FILE" ]; then
+      rm -f "$FILE" && echo " [ DELETED ] File $FILE"
     fi
   done
   if id rport >/dev/null 2>&1; then
     if is_available deluser; then
-      deluser --remove-home rport >/dev/null 2>&1
-      deluser --only-if-empty --group rport >/dev/null 2>&1
-    fi
-    if is_available userdel; then
+      deluser --remove-home rport >/dev/null 2>&1 ||true
+      deluser --only-if-empty --group rport >/dev/null 2>&1 ||true
+    elif is_available userdel; then
       userdel -r -f rport >/dev/null 2>&1
     fi
     if is_available groupdel; then
-      groupdel -f rport >/dev/null 2>&1
+      groupdel -f rport >/dev/null 2>&1 ||true
     fi
     echo " [ DELETED ] User rport"
   fi
@@ -56,10 +56,11 @@ uninstall() {
     /var/log/rport
     /var/lib/rport"
   for FOLDER in $FOLDERS; do
-    if [ -e $FOLDER ]; then
-      rm -rf $FOLDER && echo " [ DELETED ] Folder $FOLDER"
+    if [ -e "$FOLDER" ]; then
+      rm -rf "$FOLDER" && echo " [ DELETED ] Folder $FOLDER"
     fi
   done
+  echo "RPort client successfully uninstalled."
 }
 
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
@@ -68,6 +69,7 @@ uninstall() {
 #----------------------------------------------------------------------------------------------------------------------
 print_distro() {
   if [ -e /etc/os-release ]; then
+    # shellcheck source=/dev/null
     . /etc/os-release
     echo "Detected Linux Distribution: ${PRETTY_NAME}"
   fi
@@ -79,7 +81,7 @@ print_distro() {
 #----------------------------------------------------------------------------------------------------------------------
 create_sudoers_all() {
   SUDOERS_FILE=/etc/sudoers.d/rport-all-cmd
-  if [ -e $SUDOERS_FILE ]; then
+  if [ -e "$SUDOERS_FILE" ]; then
     echo "You already have a $SUDOERS_FILE. Not changing."
     return 1
   fi
@@ -103,7 +105,7 @@ ${USER} ALL=(ALL) NOPASSWD:ALL
 #----------------------------------------------------------------------------------------------------------------------
 create_sudoers_updates() {
   SUDOERS_FILE=/etc/sudoers.d/rport-update-status
-  if [ -e $SUDOERS_FILE ]; then
+  if [ -e "$SUDOERS_FILE" ]; then
     echo "You already have a $SUDOERS_FILE. Not changing."
     return 1
   fi
@@ -156,17 +158,17 @@ confirm() {
 #----------------------------------------------------------------------------------------------------------------------
 
 check_prerequisites() {
-  if [ $(id -u) -ne 0 ]; then
+  if [ "$(id -u)" -ne 0 ]; then
     abort "Execute as root or use sudo."
   fi
 
-  if which sed 2>&1 >/dev/null; then
+  if which sed >/dev/null 2>&1; then
     true
   else
     abort "sed command missing. Make sure sed is in your path."
   fi
 
-  if which tar 2>&1 >/dev/null; then
+  if which tar >/dev/null 2>&1; then
     true
   else
     abort "tar command missing. Make sure tar is in your path."
@@ -174,7 +176,7 @@ check_prerequisites() {
 }
 
 is_terminal() {
-  if echo $TERM|grep -q "^xterm";then
+  if echo "$TERM"|grep -q "^xterm";then
     return 0
   else
     echo 1>&2 "You are not on a terminal. Please use command line switches to avoid interactive questions."
@@ -215,7 +217,7 @@ install_tacoscript() {
 }
 
 version_to_int() {
-  echo $1 | \
+  echo "$1" | \
   awk -v 'maxsections=3' -F'.' 'NF < maxsections {printf("%s",$0);for(i=NF;i<maxsections;i++)printf("%s",".0");printf("\n")} NF >= maxsections {print}' | \
   awk -v 'maxdigits=3' -F'.' '{print $1*10^(maxdigits*2)+$2*10^(maxdigits)+$3}'
 }
@@ -229,52 +231,58 @@ runs_with_selinux() {
 }
 
 enable_lan_monitoring() {
-  if [ $(version_to_int $TARGET_VERSION) -lt 5008 ];then
+  if [ "$(version_to_int "$TARGET_VERSION")" -lt 5008 ];then
       # Version does not handle network interfaces yet.
       return 0
   fi
-  if grep "^\s*net_[wl]" $CONFIG_FILE;then
+  if grep "^\s*net_[wl]" "$CONFIG_FILE";then
     # Network interfaces already configured
     return 0
   fi
-  for IFACE in $(ls /sys/class/net/);do
-    [ $IFACE = 'lo' ] && continue
-    if ip addr show $IFACE|egrep -q "inet (10|192\.168|172\.16)\.";then
+  echo "Enabling Network monitoring"
+  for IFACE in /sys/class/net/*;do
+    IFACE=$(basename "${IFACE}")
+    [ "$IFACE" = 'lo' ] && continue
+    if ip addr show "$IFACE"|grep -E -q "inet (10|192\.168|172\.16)\.";then
       # Private IP
-      NET_LAN=$IFACE
+      NET_LAN="$IFACE"
     else
       # Public IP
-      NET_WAN=$IFACE
+      NET_WAN="$IFACE"
     fi
   done
-  [ -n "$NET_LAN" ] &&   sed -i "/^\[monitoring\]/a \ \ net_lan = ['${NET_LAN}' , '1000' ]" $CONFIG_FILE
-  [ -n "$NET_WAN" ] &&   sed -i "/^\[monitoring\]/a \ \ net_wan = ['${NET_WAN}' , '1000' ]" $CONFIG_FILE
+  if [ -n "$NET_LAN" ]; then
+    sed -i "/^\[monitoring\]/a \ \ net_lan = ['${NET_LAN}' , '1000' ]" "$CONFIG_FILE"
+  fi
+  if [ -n "$NET_WAN" ];then
+    sed -i "/^\[monitoring\]/a \ \ net_wan = ['${NET_WAN}' , '1000' ]" "$CONFIG_FILE"
+  fi
 }
 
 detect_interpreters() {
-  if [ $(version_to_int $TARGET_VERSION) -lt 5008 ];then
+  if [ "$(version_to_int "$TARGET_VERSION")" -lt 5008 ];then
     # Version does not handle interpreters yet.
     return 0
   fi
-  if grep -q "\[interpreter\-aliases\]" $CONFIG_FILE; then
+  if grep -q "\[interpreter\-aliases\]" "$CONFIG_FILE"; then
     # Config already updated
     true
   else
     echo "Updating config with new interpreter-aliases ..."
-    echo '[interpreter-aliases]' >>$CONFIG_FILE
+    echo '[interpreter-aliases]' >>"$CONFIG_FILE"
   fi
   SEARCH="bash zsh ksh csh python3 python2 perl pwsh fish"
   for ITEM in $SEARCH;do
-    FOUND=$(which $ITEM 2>/dev/null)
-    if [ -z $FOUND ];then
+    FOUND=$(which "$ITEM" 2>/dev/null||true)
+    if [ -z "$FOUND" ];then
       continue
     fi
     echo "Interpreter '$ITEM' found in '$FOUND'"
-    if grep -q "$ITEM.*$FOUND" $CONFIG_FILE;then
+    if grep -q "$ITEM.*$FOUND" "$CONFIG_FILE";then
       echo "Interpreter '$ITEM = $FOUND' already registered."
       continue
     fi
     # Append the found interpreter to the config
-    sed -i "/^\[interpreter-aliases\]/a \ \ $ITEM = \"$FOUND\"" $CONFIG_FILE
+    sed -i "/^\[interpreter-aliases\]/a \ \ $ITEM = \"$FOUND\"" "${CONFIG_FILE}"
   done
 }

@@ -1,11 +1,12 @@
+set -e
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
 #          NAME:  prepare
 #   DESCRIPTION:  Create a temporary folder and prepare the system to execute the installation
 #----------------------------------------------------------------------------------------------------------------------
 prepare() {
-  test -e ${TMP_FOLDER} && rm -rf ${TMP_FOLDER}
-  mkdir ${TMP_FOLDER}
-  cd ${TMP_FOLDER}
+  test -e "${TMP_FOLDER}" && rm -rf "${TMP_FOLDER}"
+  mkdir "${TMP_FOLDER}"
+  cd "${TMP_FOLDER}"
 }
 
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
@@ -14,7 +15,7 @@ prepare() {
 #----------------------------------------------------------------------------------------------------------------------
 clean_up() {
   cd /tmp
-  rm -rf ${TMP_FOLDER}
+  rm -rf "${TMP_FOLDER}"
 }
 
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
@@ -22,13 +23,13 @@ clean_up() {
 #   DESCRIPTION:  Check if the RPort server is reachable or abort.
 #----------------------------------------------------------------------------------------------------------------------
 test_connection() {
-  CONN_TEST=$(curl -vIs -m3 "http://${SERVER}" 2>&1)
+  CONN_TEST=$(curl -vIs -m5 "${CONNECT_URL}" 2>&1)
   if echo "${CONN_TEST}"|grep -q "Connected to";then
-    confirm "${SERVER} is reachable. All good."
+    confirm "${CONNECT_URL} is reachable. All good."
   else
     echo "$CONN_TEST"
     echo ""
-    echo "Testing the connection to the RPort server on http://${SERVER} failed."
+    echo "Testing the connection to the RPort server on ${CONNECT_URL} failed."
     echo "* Check your internet connection and firewall rules."
     echo "* Check if a transparent HTTP proxy is sniffing and blocking connections."
     echo "* Check if a virus scanner is inspecting HTTP connections."
@@ -43,7 +44,7 @@ test_connection() {
 #                 returning the real download URL of GitHub in a more handy fashion
 #----------------------------------------------------------------------------------------------------------------------
 download_and_extract() {
-  cd ${TMP_FOLDER}
+  cd "${TMP_FOLDER}"
   # Download the tar.gz package
   if is_available curl; then
     curl -LSs "https://downloads.rport.io/rport/${RELEASE}/latest.php?arch=Linux_${ARCH}" -o rport.tar.gz
@@ -63,12 +64,12 @@ download_and_extract() {
 #----------------------------------------------------------------------------------------------------------------------
 install_bin() {
   EXEC_BIN=/usr/local/bin/${1}
-  if [ -e $EXEC_BIN ]; then
-    if [ $FORCE -eq 0 ]; then
+  if [ -e "$EXEC_BIN" ]; then
+    if [ "$FORCE" -eq 0 ]; then
       abort "${EXEC_BIN} already exists. Use -f to overwrite."
     fi
   fi
-  mv ${TMP_FOLDER}/${1} ${EXEC_BIN}
+  mv "${TMP_FOLDER}/${1}" "${EXEC_BIN}"
   confirm "${1} installed to ${EXEC_BIN}"
   TARGET_VERSION=$(${EXEC_BIN} --version |awk '{print $2}')
   confirm "RPort $TARGET_VERSION installed to $EXEC_BIN"
@@ -80,13 +81,13 @@ install_bin() {
 #    PARAMETERS:  config name relative to the temp folder without suffix .example.conf
 #----------------------------------------------------------------------------------------------------------------------
 install_config() {
-  test -e $CONF_DIR || mkdir $CONF_DIR
+  test -e "$CONF_DIR" || mkdir "$CONF_DIR"
   CONFIG_FILE=${CONF_DIR}/${1}.conf
-  if [ -e ${CONFIG_FILE} ]; then
-    mv ${CONFIG_FILE} ${CONFIG_FILE}.bak
+  if [ -e "${CONFIG_FILE}" ]; then
+    mv "${CONFIG_FILE}" "${CONFIG_FILE}".bak
     confirm "Old config has been backed up to ${CONFIG_FILE}.bak"
   fi
-  mv ${TMP_FOLDER}/${1}.example.conf ${CONFIG_FILE}
+  mv "${TMP_FOLDER}/rport.example.conf" "${CONFIG_FILE}"
   confirm "${CONFIG_FILE} created."
 }
 
@@ -96,7 +97,7 @@ install_config() {
 #----------------------------------------------------------------------------------------------------------------------
 create_user() {
   confirm "RPort will run as user ${USER}"
-  if id ${USER} >/dev/null 2>&1; then
+  if id "${USER}" >/dev/null 2>&1; then
     confirm "User ${USER} already exist."
   else
     if is_available useradd; then
@@ -108,10 +109,10 @@ create_user() {
       abort "No command found to add a user"
     fi
   fi
-  test -e $LOG_DIR || mkdir -p $LOG_DIR
+  test -e "$LOG_DIR" || mkdir -p "$LOG_DIR"
   test -e /var/lib/rport/scripts || mkdir -p /var/lib/rport/scripts
-  chown ${USER}:root $LOG_DIR
-  chown ${USER}:root /var/lib/rport/scripts
+  chown "${USER}":root "$LOG_DIR"
+  chown "${USER}":root /var/lib/rport/scripts
   chmod 0700 /var/lib/rport/scripts
 }
 
@@ -122,7 +123,7 @@ create_user() {
 create_systemd_service() {
   echo "Installing systemd service for rport"
   test -e /etc/systemd/system/rport.service && rm -f /etc/systemd/system/rport.service
-  /usr/local/bin/rport --service install --service-user ${USER} --config /etc/rport/rport.conf
+  /usr/local/bin/rport --service install --service-user "${USER}" --config /etc/rport/rport.conf
   if is_available systemctl; then
     systemctl daemon-reload
     systemctl start rport
@@ -157,42 +158,42 @@ EOF
 #----------------------------------------------------------------------------------------------------------------------
 prepare_config() {
   echo "Preparing $CONFIG_FILE"
-  sed -i "s|#*server = .*|server = \"${SERVER}\"|g" $CONFIG_FILE
-  sed -i "s/#*auth = .*/auth = \"${CLIENT_ID}:${PASSWORD}\"/g" $CONFIG_FILE
-  sed -i "s/#*fingerprint = .*/fingerprint = \"${FINGERPRINT}\"/g" $CONFIG_FILE
-  sed -i "s/#*log_file = .*C.*Program Files.*/""/g" $CONFIG_FILE
-  sed -i "s/#*log_file = /log_file = /g" $CONFIG_FILE
-  sed -i "s|#updates_interval = '4h'|updates_interval = '4h'|g" $CONFIG_FILE
-  if [ $ENABLE_COMMANDS -eq 1 ]; then
-    sed -i "s/#allow = .*/allow = ['.*']/g" $CONFIG_FILE
-    sed -i "s/#deny = .*/deny = []/g" $CONFIG_FILE
-    sed -i '/^\[remote-scripts\]/a \ \ enabled = true' $CONFIG_FILE
-    sed -i "s|# script_dir = '/var/lib/rport/scripts'|script_dir = '/var/lib/rport/scripts'|g" $CONFIG_FILE
+  sed -i "s|#*server = .*|server = \"${CONNECT_URL}\"|g" "$CONFIG_FILE"
+  sed -i "s/#*auth = .*/auth = \"${CLIENT_ID}:${PASSWORD}\"/g" "$CONFIG_FILE"
+  sed -i "s/#*fingerprint = .*/fingerprint = \"${FINGERPRINT}\"/g" "$CONFIG_FILE"
+  sed -i "s/#*log_file = .*C.*Program Files.*/""/g" "$CONFIG_FILE"
+  sed -i "s/#*log_file = /log_file = /g" "$CONFIG_FILE"
+  sed -i "s|#updates_interval = '4h'|updates_interval = '4h'|g" "$CONFIG_FILE"
+  if [ "$ENABLE_COMMANDS" -eq 1 ]; then
+    sed -i "s/#allow = .*/allow = ['.*']/g" "$CONFIG_FILE"
+    sed -i "s/#deny = .*/deny = []/g" "$CONFIG_FILE"
+    sed -i '/^\[remote-scripts\]/a \ \ enabled = true' "$CONFIG_FILE"
+    sed -i "s|# script_dir = '/var/lib/rport/scripts'|script_dir = '/var/lib/rport/scripts'|g" "$CONFIG_FILE"
   fi
 
   # Set the hostname.
-  if grep -Eq "^use_hostname = true" $CONFIG_FILE;then
+  if grep -Eq "^use_hostname = true" "$CONFIG_FILE";then
     # For versions >= 0.5.9
     # Just insert an example.
-    sed -i "s/#name = .*/#name = \"$(get_hostname)\"/g" $CONFIG_FILE
+    sed -i "s/#name = .*/#name = \"$(get_hostname)\"/g" "$CONFIG_FILE"
   else
     # Older versions
     # Insert a hardcoded name
-    sed -i "s/#*name = .*/name = \"$(get_hostname)\"/g" $CONFIG_FILE
+    sed -i "s/#*name = .*/name = \"$(get_hostname)\"/g" "$CONFIG_FILE"
   fi
 
   # Set the machine_id
-  if grep -Eq "^use_system_id = true" $CONFIG_FILE && [ -e /etc/machine-id ];then
+  if grep -Eq "^use_system_id = true" "$CONFIG_FILE" && [ -e /etc/machine-id ];then
     # Versions >= 0.5.9 read it dynamically
     echo "Using /etc/machine-id as rport client id"
   else
     # Older versions need a hard coded id
-    sed -i "s/^use_hostname = true/use_hostname = false/g" $CONFIG_FILE
-    sed -i "s/#id = .*/id = \"$(machine_id)\"/g" $CONFIG_FILE
+    sed -i "s/^use_hostname = true/use_hostname = false/g" "$CONFIG_FILE"
+    sed -i "s/#id = .*/id = \"$(machine_id)\"/g" "$CONFIG_FILE"
   fi
 
   if get_geodata; then
-    sed -i "s/#tags = .*/tags = ['$COUNTRY','$CITY']/g" $CONFIG_FILE
+    sed -i "s/#tags = .*/tags = ['$COUNTRY','$CITY']/g" "$CONFIG_FILE"
   fi
 }
 
@@ -237,7 +238,7 @@ alt_machine_id() {
 install_client() {
   echo "Installing rport client"
   print_distro
-  if runs_with_selinux && [ $SELINUX_FORCE -ne 1 ];then
+  if runs_with_selinux && [ "$SELINUX_FORCE" -ne 1 ];then
     echo ""
     echo "Your system has SELinux enabled. This installer will not create the needed policies."
     echo "Rport will not connect with out the right policies."
@@ -259,8 +260,8 @@ install_client() {
     create_systemd_service
   fi
   create_sudoers_updates
-  [ $ENABLE_SUDO -eq 1 ] && create_sudoers_all
-  [ $INSTALL_TACO -eq 1 ] && install_tacoscript
+  [ "$ENABLE_SUDO" -eq 1 ] && create_sudoers_all
+  [ "$INSTALL_TACO" -eq 1 ] && install_tacoscript
   verify_and_terminate
 }
 
@@ -274,8 +275,8 @@ verify_and_terminate() {
     if check_log; then
       finish
       return 0
-    elif [ $? -eq 1 ] && [ $USE_ALTERNATIVE_MACHINEID -ne 1 ]; then
-      export USE_ALTERNATIVE_MACHINEID=1
+    elif [ $? -eq 1 ] && [ "$USE_ALTERNATIVE_MACHINEID" -ne 1 ]; then
+      USE_ALTERNATIVE_MACHINEID=1
       use_alternative_machineid
       verify_and_terminate
       return 0
@@ -287,9 +288,9 @@ verify_and_terminate() {
 use_alternative_machineid() {
   # If the /etc/machine-id is already used, use an alternative unique id
   systemctl stop rport
-  rm -f $LOG_FILE
+  rm -f "$LOG_FILE"
   echo "Creating a unique id based on the mac addresses of the network cards."
-  sed -i "s/^id = .*/id = \"$(alt_machine_id)\"/g" $CONFIG_FILE
+  sed -i "s/^id = .*/id = \"$(alt_machine_id)\"/g" "$CONFIG_FILE"
   systemctl start rport
 }
 
@@ -301,14 +302,14 @@ get_geodata() {
   GEODATA=""
   GEOSERVICE_URL="http://ip-api.com/line/?fields=status,country,city"
   if is_available curl; then
-    GEODATA=$(curl -m2 -Ss ${GEOSERVICE_URL} 2>/dev/null)
+    GEODATA=$(curl -m2 -Ss "${GEOSERVICE_URL}" 2>/dev/null)
   else
-    GEODATA=$(wget --timeout=2 -O - -q ${GEOSERVICE_URL} 2>/dev/null)
+    GEODATA=$(wget --timeout=2 -O - -q "${GEOSERVICE_URL}" 2>/dev/null)
   fi
-  if echo $GEODATA | grep -q "^success"; then
-    export CITY="$(echo "$GEODATA" | head -n3 | tail -n1)"
-    export COUNTRY="$(echo "$GEODATA" | head -n2 | tail -n1)"
-    export GEODATA="1"
+  if echo "$GEODATA" | grep -q "^success"; then
+    CITY="$(echo "$GEODATA" | head -n3 | tail -n1)"
+    COUNTRY="$(echo "$GEODATA" | head -n2 | tail -n1)"
+    GEODATA="1"
     return 0
   else
     return 1
@@ -320,7 +321,7 @@ get_geodata() {
 #   DESCRIPTION:  Check the log file for proper operation or common errors
 #----------------------------------------------------------------------------------------------------------------------
 check_log() {
-  if [ -e $LOG_FILE ];then
+  if [ -e "$LOG_FILE" ];then
     true
   else
     echo 2>&1 "[!] Logfile $LOG_FILE does not exist."
@@ -338,7 +339,7 @@ check_log() {
     echo 2>&1 "[!] Connection error: websocket: bad handshake"
     echo "Check if transparent proxies are interfering outgoing http connections."
     return 2
-  elif tac $LOG_FILE | grep error; then
+  elif tac "$LOG_FILE" | grep error; then
     return 3
   fi
 
@@ -438,7 +439,7 @@ done
 #
 # Read the command line options and map to a function call
 #
-RAW_ARGS=$@
+RAW_ARGS=$*
 ACTION=install_client
 ENABLE_COMMANDS=0
 ENABLE_SUDO=0
@@ -448,7 +449,7 @@ SELINUX_FORCE=0
 while getopts 'hvfcsuxstila:' opt; do
   case "${opt}" in
 
-  h) ACTION=help ;;
+  h) help ; exit 0 ;;
   f) FORCE=1 ;;
   v)
     echo "$0 -- Version $VERSION"
