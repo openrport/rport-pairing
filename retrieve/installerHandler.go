@@ -44,7 +44,8 @@ func renderInstaller(rw http.ResponseWriter, os string, data interface{}) {
 	default:
 		includeFileRaw(rw, "templates/linux/init.sh")
 		includeFile(rw, "templates/header.txt")
-		renderTemplate(rw, "templates/linux/vars.sh", data)
+		renderTemplate(rw, "templates/linux/installer_vars.sh", data)
+		includeFile(rw, "templates/linux/vars.sh")
 		includeFile(rw, "templates/linux/functions.sh")
 		includeFile(rw, "templates/linux/install.sh")
 	}

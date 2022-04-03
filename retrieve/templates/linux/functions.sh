@@ -107,7 +107,7 @@ create_sudoers_updates() {
   SUDOERS_FILE=/etc/sudoers.d/rport-update-status
   if [ -e "$SUDOERS_FILE" ]; then
     echo "You already have a $SUDOERS_FILE. Not changing."
-    return 1
+    return 0
   fi
 
   if is_available sudo; then

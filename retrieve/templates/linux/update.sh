@@ -1,38 +1,10 @@
-#!/bin/sh -
-#======================================================================================================================
-# vim: softtabstop=4 shiftwidth=4 expandtab fenc=utf-8 spell spelllang=en cc=120
-#======================================================================================================================
-#
-#          FILE: rport-client-updater.sh
-#
-#   DESCRIPTION: Bootstrap Rport(d) installation for various systems/distributions
-#
-#          BUGS: https://github.com/cloudradar-monitoring/rport/issues
-#
-#     COPYRIGHT: (c) 2021 by the CloudRadar Team,
-#
-#       LICENSE: MIT
-#  ORGANIZATION: cloudradar GmbH, Potsdam, Germany (cloudradar.io)
-#       CREATED: 10/10/2020
-#       UPDATED: 02/12/2021
-#======================================================================================================================
-
-#
-# Global Variables
-#
-ARCH=$(uname -m | sed s/"armv\(6\|7\)l"/"armv\1"/ | sed s/aarch64/arm64/)
+set -e
 CURRENT_VERSION=$(/usr/local/bin/rport --version | awk '{print $2}')
-FORCE=1
-USER=rport
-CONFIG_FILE=/etc/rport/rport.conf
-
-# INCLUDE functions.sh
-
 download_package() {
-  if [ $VERSION != "undef" ]; then
+  if [ "$VERSION" != "undef" ]; then
     RELEASE=custom
     URL="https://github.com/cloudradar-monitoring/rport/releases/download/${VERSION}/rport_${VERSION}_Linux_${ARCH}.tar.gz"
-    if curl -fI $URL >/dev/null 2>&1; then
+    if curl -fI "$URL" >/dev/null 2>&1; then
       true
     else
       echo 1>&2 "Version $VERSION does not exist on $URL"
@@ -41,7 +13,7 @@ download_package() {
   else
     URL="https://download.rport.io/rport/${RELEASE}/?arch=Linux_${ARCH}&gt=${CURRENT_VERSION}"
   fi
-  curl -Ls ${URL} -o rport.tar.gz
+  curl -Ls "${URL}" -o rport.tar.gz
 }
 
 restart_rport() {
@@ -82,11 +54,11 @@ update() {
     restart_rport
   else
     echo "Nothing to do. RPort is on the latest version ${CURRENT_VERSION}."
-    [ $ENABLE_TACOSCRIPT -eq 1 ] && install_tacoscript
+    [ "$ENABLE_TACOSCRIPT" -eq 1 ] && install_tacoscript
     exit 0
   fi
   rm -f rport.tar.gz
-  [ $ENABLE_TACOSCRIPT -eq 1 ] && install_tacoscript
+  [ "$ENABLE_TACOSCRIPT" -eq 1 ] && install_tacoscript
   if pidof rport >/dev/null; then
     finish
   else
@@ -101,18 +73,18 @@ update() {
 #----------------------------------------------------------------------------------------------------------------------
 ask_yes_no() {
   if [ -z "$1" ]; then
-    echo -n "Do you want to proceed?"
+    printf "Do you want to proceed?"
   else
-    echo -n $1
+    printf "%s" "$1"
   fi
   echo " (y/n)"
-  while read INPUT; do
-    if echo $INPUT | grep -q "^[Yy]"; then
+  while read -r INPUT; do
+    if echo "$INPUT" | grep -q "^[Yy]"; then
       return 0
-    elif echo $INPUT | grep -q "^[Nn]"; then
+    elif echo "$INPUT" | grep -q "^[Nn]"; then
       return 1
     fi
-    echo "Type (y/n) or abort with Crtl-C"
+    echo "Type (y/n) or abort with Ctrl-C"
   done
 }
 
@@ -123,7 +95,7 @@ ask_yes_no() {
 insert_scripts() {
   echo "[remote-scripts]
   enabled = ${ENABLE_SCRIPTS}
-" >>$CONFIG_FILE
+" >>"$CONFIG_FILE"
 }
 
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
@@ -131,10 +103,10 @@ insert_scripts() {
 #   DESCRIPTION:  check if scripts can be activated
 #----------------------------------------------------------------------------------------------------------------------
 check_scripts() {
-  if grep -q remote-scripts $CONFIG_FILE; then
+  if grep -q remote-scripts "$CONFIG_FILE"; then
     return 0
   fi
-  if [ $ENABLE_SCRIPTS = 'true' ]; then
+  if [ "$ENABLE_SCRIPTS" = 'true' ]; then
     insert_scripts
     return 0
   fi
@@ -159,7 +131,7 @@ check_sudo() {
   if [ -e /etc/sudoers.d/rport-all-cmd ]; then
     return 0
   fi
-  if [ $ENABLE_SUDO -eq 1 ]; then
+  if [ "$ENABLE_SUDO" -eq 1 ]; then
     create_sudoers_all
     return 0
   fi
@@ -180,15 +152,15 @@ clean_up() {
 }
 
 enable_monitoring() {
-  if [ $(version_to_int $TARGET_VERSION) -lt 5000 ];then
+  if [ "$(version_to_int "$TARGET_VERSION")" -lt 5000 ];then
         # Version does not handle monitoring yet.
         return 0
   fi
-  if grep -q "\[monitoring\]" $CONFIG_FILE;then
+  if grep -q "\[monitoring\]" "$CONFIG_FILE";then
     echo "Monitoring already enabled."
     return 0
   fi
-  cat <<EOF >>$CONFIG_FILE
+  cat <<EOF >>"$CONFIG_FILE"
 [monitoring]
   ## The rport client can collect and report performance data of the operating system.
   ## https://oss.rport.io/docs/no17-monitoring.html
@@ -313,7 +285,6 @@ EOF
 # Read the command line options and map to a function call
 #
 ACTION=update
-ENABLE_COMMANDS=0
 ENABLE_TACOSCRIPT=1
 ENABLE_SUDO=2
 RELEASE=stable

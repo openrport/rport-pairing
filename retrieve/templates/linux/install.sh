@@ -328,13 +328,13 @@ check_log() {
     echo 2>&1 "[!] RPOrt very likely failed to start."
     return 4
   fi
-  if grep -q "client id .* is already in use" $LOG_FILE; then
+  if grep -q "client id .* is already in use" "$LOG_FILE"; then
     echo ""
     echo 2>&1 "[!] Configuration error: client id is already in use."
     echo 2>&1 "[!] Likely you have systems with an duplicated machine-id in your network."
     echo ""
     return 1
-  elif grep -q "Connection error: websocket: bad handshake" $LOG_FILE; then
+  elif grep -q "Connection error: websocket: bad handshake" "$LOG_FILE"; then
     echo ""
     echo 2>&1 "[!] Connection error: websocket: bad handshake"
     echo "Check if transparent proxies are interfering outgoing http connections."
