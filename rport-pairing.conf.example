@@ -12,6 +12,6 @@
   ## code must be 7 digits long, or whatever the router expects
   code = "0000000"
   connect_url = "http://rport.example.com:8080"
-  fingerprint = "2a:c4:79:04:80:ba:7c:60:05:e5:2c:49:6d:74:56:24"
+  fingerprint = "36:98:56:12:f3:dc:e5:8d:ac:96:48:23:b6:f0:42:15"
   client_id = "client1"
   password = "foobaz"

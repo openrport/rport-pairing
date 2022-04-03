@@ -37,6 +37,7 @@ Before you push changes to the Linux shell or Windows Powershell scripts, test t
 curl http://localhost:9978/0000000 -o rport-install.sh
 shellcheck rport-install.sh
 ```
+Shellcheck must terminate with exit code 0.
 
 [Shellcheck](https://github.com/koalaman/shellcheck#user-content-installing) can be installed on MacOS or Linux using common package managers.
 
