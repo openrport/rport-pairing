@@ -20,8 +20,8 @@ func clientOs(r *http.Request) string {
 	}
 }
 
-// Read a file and write it to the response writer followed by a new line
-func writeFile(rw http.ResponseWriter, name string) {
+// Read a file and write it to the response writer followed by a new line and surrounded by comments
+func includeFile(rw http.ResponseWriter, name string) {
 	if fr, err := templates.ReadFile(name); err != nil {
 		log.Printf("error reading file %s: %s", name, err)
 	} else {
@@ -29,7 +29,19 @@ func writeFile(rw http.ResponseWriter, name string) {
 		if _, err := rw.Write(fr); err != nil {
 			log.Println("error writing http response: ", err)
 		}
-		fmt.Fprintf(rw, "\n# END of %s %s|\n\n", name, strings.Repeat("-", 111-len(name)))
+		fmt.Fprintf(rw, "\n# END of %s %s|\n\n", name, strings.Repeat("-", 108-len(name)))
+	}
+}
+
+// Read a file and write it to the response writer followed by a new line
+func includeFileRaw(rw http.ResponseWriter, name string) {
+	if fr, err := templates.ReadFile(name); err != nil {
+		log.Printf("error reading file %s: %s", name, err)
+	} else {
+		if _, err := rw.Write(fr); err != nil {
+			log.Println("error writing http response: ", err)
+		}
+		fmt.Fprintln(rw)
 	}
 }
 

@@ -37,15 +37,15 @@ func (rh *InstallerHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 func renderInstaller(rw http.ResponseWriter, os string, data interface{}) {
 	switch os {
 	case "windows":
-		writeFile(rw, "templates/header.txt")
+		includeFile(rw, "templates/header.txt")
 		renderTemplate(rw, "templates/windows/vars.ps1", data)
-		writeFile(rw, "templates/windows/functions.ps1")
-		writeFile(rw, "templates/windows/install.ps1")
+		includeFile(rw, "templates/windows/functions.ps1")
+		includeFile(rw, "templates/windows/install.ps1")
 	default:
-		fmt.Fprintln(rw, "#!/bin/sh -e")
-		writeFile(rw, "templates/header.txt")
+		includeFileRaw(rw, "templates/linux/init.sh")
+		includeFile(rw, "templates/header.txt")
 		renderTemplate(rw, "templates/linux/vars.sh", data)
-		writeFile(rw, "templates/linux/functions.sh")
-		writeFile(rw, "templates/linux/install.sh")
+		includeFile(rw, "templates/linux/functions.sh")
+		includeFile(rw, "templates/linux/install.sh")
 	}
 }

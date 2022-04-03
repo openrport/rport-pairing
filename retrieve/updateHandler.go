@@ -19,13 +19,13 @@ func (rh *UpdateHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 func renderUpdate(rw http.ResponseWriter, os string) {
 	switch os {
 	case "windows":
-		writeFile(rw, "templates/header.txt")
-		writeFile(rw, "templates/windows/functions.ps1")
-		writeFile(rw, "templates/windows/update.ps1")
+		includeFile(rw, "templates/header.txt")
+		includeFile(rw, "templates/windows/functions.ps1")
+		includeFile(rw, "templates/windows/update.ps1")
 	default:
 		fmt.Fprintln(rw, "#!/bin/sh -e")
-		writeFile(rw, "templates/header.txt")
-		writeFile(rw, "templates/linux/functions.sh")
-		writeFile(rw, "templates/linux/update.sh")
+		includeFile(rw, "templates/header.txt")
+		includeFile(rw, "templates/linux/functions.sh")
+		includeFile(rw, "templates/linux/update.sh")
 	}
 }
