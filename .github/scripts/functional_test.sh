@@ -21,12 +21,11 @@ jq < response.json
 # Retrieve the Linux installer script from the deposited values above
 PAIRING_CODE=$(jq -r .pairing_code < response.json)
 echo "Testing installer for Linux"
-curl -fs "http://127.0.0.1:9090/${PAIRING_CODE}" -o rport-installer.sh 2>&1
+curl -fs "http://127.0.0.1:9090/${PAIRING_CODE}" -o rport-installer.sh
 grep -q 'END of templates/linux/install.sh' rport-installer.sh
 
 # Check the shell script passes all shellchecks
 echo "Running shellcheck for rport-installer.sh"
-shellcheck -V
 shellcheck rport-installer.sh
 
 # Check by executing the help function
@@ -39,3 +38,9 @@ sudo sh rport-installer.sh -x -s
 # Verify the client has connected to the local rportd
 echo "Verifying client is connected to server"
 grep "client-listener.*Open.*$(hostname)" /tmp/rportd.log
+
+# Execute the update script
+echo "Executing the update script now"
+curl -fs "http://127.0.0.1:9090/update" -o rport-update.sh
+sudo sh rport-update.sh -h
+sudo sh rport-update.sh -t -x -s

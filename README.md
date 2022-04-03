@@ -35,8 +35,11 @@ Before you push changes to the Linux shell or Windows Powershell scripts, test t
 ### Bash
 ```bash
 go run ./cmd/rport-pairing.go -c rport-pairing.conf.example &
+sleep 2
 curl http://localhost:9090/0000000 -o rport-install.sh
 shellcheck rport-install.sh
+curl http://localhost:9090/update -o rport-update.sh
+shellcheck rport-update.sh
 pkill -f "rport-pairing.* -c rport-pairing.conf.example"
 ```
 Shellcheck must terminate with exit code 0.
