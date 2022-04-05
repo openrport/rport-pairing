@@ -42,5 +42,8 @@ grep "client-listener.*Open.*$(hostname)" /tmp/rportd.log
 # Execute the update script
 echo "Executing the update script now"
 curl -fs "http://127.0.0.1:9090/update" -o rport-update.sh
+# Check the shell script passes all shellchecks
+echo "Running shellcheck for rport-update.sh"
+shellcheck rport-update.sh
 sudo sh rport-update.sh -h
 sudo sh rport-update.sh -t -x -s
