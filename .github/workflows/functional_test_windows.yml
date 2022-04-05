@@ -21,7 +21,7 @@ jobs:
 
       - name: Run pairing service
         shell: pwsh
-        run: .github/scripts/run_pairing_service.sh
+        run: .github/scripts/run_pairing_service.ps1
 
       - name: Run RPort Server
         shell: pwsh
