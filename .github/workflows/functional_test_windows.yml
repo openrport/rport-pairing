@@ -12,15 +12,12 @@ jobs:
         with:
           go-version: 1.17
 
-      - name: PSScriptAnalyzer
+      - name: Install PSScriptAnalyzer
         shell: pwsh
         run: |
           if (-not(Get-Module -ListAvailable -Name PSScriptAnalyzer)) {
             Install-Module -Name PSScriptAnalyzer -Scope CurrentUser -force
           }
-          Import-Module -Name PSScriptAnalyzer -force
-          Write-Output "Running PS Script Analyzer"
-          Invoke-ScriptAnalyzer -Path rport-installer.ps1 -EnableExit -ReportSummary
 
       - name: Run pairing service
         shell: pwsh
