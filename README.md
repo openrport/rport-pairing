@@ -1,4 +1,7 @@
-# Rport-Pairing
+# RPort-Pairing
+![Go Test](https://github.com/cloudradar-monitoring/rport-pairing/actions/workflows/go_test.yml/badge.svg)
+![Functional Test Linux](https://github.com/cloudradar-monitoring/rport-pairing/actions/workflows/functional_test_linux.yml/badge.svg)
+
 [![GitHub issues](https://img.shields.io/github/issues/cloudradar-monitoring/rport-pairing.svg)](https://github.com/matoous/go-nanoid/issues)
 [![License](https://img.shields.io/badge/license-MIT%20License-blue.svg)](https://github.com/cloudradar-monitoring/rport-pairing/blob/main/LICENSE)
 
@@ -47,9 +50,10 @@ Shellcheck must terminate with exit code 0.
 [Shellcheck](https://github.com/koalaman/shellcheck#user-content-installing) can be installed on MacOS or Linux using common package managers.
 
 ### PowerShell
-```bash
-curl -H "User-Agent:PowerShell" http://localhost:9978/0000000 -o rport-install.ps1
-pwsh -Command "Import-Module -Name PSScriptAnalyzer;Invoke-ScriptAnalyzer -Path rport-install.ps1"
+```powershell
+iwr "http://localhost:9090/0000000" -oufile rport-install.ps1
+Import-Module -Name PSScriptAnalyzer
+Invoke-ScriptAnalyzer -Path rport-install.ps1
 ```
 
 If you haven't installed [PSScriptAnalyzer](https://github.com/PowerShell/PSScriptAnalyzer) open a PowerShell and install it.
