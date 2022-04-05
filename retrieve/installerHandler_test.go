@@ -37,7 +37,7 @@ func TestInstallerHandler_ServeHTTP(t *testing.T) {
 		},
 		{
 			TestInstallerWith{"Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.20348.1", "cZ1ZhsG"},
-			ExpectedInstallerResults{200, "function Expand-Zip {"},
+			ExpectedInstallerResults{200, "function Expand-Zip"},
 		},
 
 		{
