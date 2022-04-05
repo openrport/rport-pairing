@@ -1,123 +1,86 @@
-#======================================================================================================================
-#
-#          FILE: rport-windows-installer.ps1
-#
-#   DESCRIPTION: Bootstrap Rport installation for Windows
-#
-#          BUGS: https://github.com/cloudradar-monitoring/rport/issues
-#
-#     COPYRIGHT: (c) 2021 by the CloudRadar Team,
-#
-#       LICENSE: MIT
-#  ORGANIZATION: cloudradar GmbH, Potsdam, Germany (cloudradar.io)
-#       CREATED: 25/02/2021
-#        EDITED: 07/12/2021
-#======================================================================================================================
-<#
-        .SYNOPSIS
-        Installs the rport clients and connects it to the server
-
-        .DESCRIPTION
-        This script will download the latest version of the rport client,
-        create the configuration and connect to the server.
-        You can change the configuration by editing C:\Program Files\rport\rport.conf
-        Rport runs as a service with a local system account.
-
-        .PARAMETER x
-        Enable the execution of scripts via rport.
-
-        .PARAMETER t
-        Use the latest unstable development release. Dangerous!
-
-        .PARAMETER i
-        Install Tascoscript along with the RPort Client
-
-        .INPUTS
-        None. You cannot pipe objects.
-
-        .OUTPUTS
-        System.String. Add-Extension returns success banner or a failure message.
-
-        .EXAMPLE
-        PS> powershell -ExecutionPolicy Bypass -File .\rport-installer.ps1 -x
-        Install and connext with script execution enabled.
-
-        .EXAMPLE
-        PS> powershell -ExecutionPolicy Bypass -File .\rport-installer.ps1
-        Install and connect with script execution disabled.
-
-        .LINK
-        Online help: https://kb.rport.io/connecting-clients#advanced-pairing-options
-#>
-# Definition of command line parameters
-Param(
-# Enable remote commands yes/no
-    [switch]$x,
-# Use unstable version yes/no
-    [switch]$t,
-# Install tacoscript
-    [switch]$i
-)
-
-$release = If ($t) { "unstable" }
-Else { "stable" }
-$myLocation= (Get-Location).path
+$release = If ($t)
+{
+    "unstable"
+}
+Else
+{
+    "stable"
+}
+$myLocation = (Get-Location).path
 $url = "https://downloads.rport.io/rport/$( $release )/latest.php?arch=Windows_x86_64"
 $downloadFile = "C:\Windows\temp\rport_$( $release )_Windows_x86_64.zip"
 $installDir = "$( $Env:Programfiles )\rport"
 $dataDir = "$( $installDir )\data"
 # Test the connection to the RPort server first
-if (Test-NetConnection -ComputerName $server.split(":")[0] -Port $server.split(":")[1] -InformationLevel Quiet) {
-    Write-Host "Connection to RPort server tested successfully."
+$test_response = $null
+try
+{
+    $test_response = (Invoke-WebRequest -Uri $connect_url -Method Head -TimeoutSec 2).BaseResponse
 }
-else {
-    Write-Host "Connection to RPort server failed."
-    Write-Host "Check your internet connection and firewall rules."
-    Exit 1;
+catch
+{
+    if ([int]$_.Exception.Response.StatusCode -eq 404)
+    {
+        Write-Output "* Testing connection to $( $connect_url ) has succeeded."
+    }
+    else
+    {
+        $fc = $host.UI.RawUI.ForegroundColor
+        $host.UI.RawUI.ForegroundColor = "red"
+        $test_response
+        Write-Output "# Testing connection to $( $connect_url ) has failed."
+        $_.Exception.Message
+        $host.UI.RawUI.ForegroundColor = $fc
+        exit 1
+    }
 }
-Write-Host ""
 # Download the package from GitHub
-if (-not(Test-Path $downloadFile -PathType leaf)) {
-    Write-Host "* Downloading  $( $url ) ."
+if (-not(Test-Path $downloadFile -PathType leaf))
+{
+    Write-Output "* Downloading  $( $url ) ."
     $ProgressPreference = 'SilentlyContinue'
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     Invoke-WebRequest -Uri $url -OutFile $downloadFile
-    Write-Host "* Download finished and stored to $( $downloadFile ) ."
+    Write-Output "* Download finished and stored to $( $downloadFile ) ."
 }
 
 # Create a directory
-if (-not(Test-Path $installDir)) {
+if (-not(Test-Path $installDir))
+{
     mkdir $installDir| Out-Null
 }
 # Create the data directory
-if (-not(Test-Path $dataDir)) {
+if (-not(Test-Path $dataDir))
+{
     mkdir $dataDir| Out-Null
 }
 
 # Extract the ZIP file
-Write-Host ""
 Expand-Zip -Path $downloadFile -DestinationPath $installDir
-$targetVersion = (& "$( $installDir )/rport.exe" --version) -replace "version ",""
-Write-Host "* RPort Client version $targetVersion installed."
+$targetVersion = (& "$( $installDir )/rport.exe" --version) -replace "version ", ""
+Write-Output "* RPort Client version $targetVersion installed."
 $configFile = "$( $installDir )\rport.conf"
-if (Test-Path $configFile -PathType leaf) {
-    Write-Host "* Configuration file $( $configFile ) found."
-    Write-Host "* Your configuration will not be changed."
+if (Test-Path $configFile -PathType leaf)
+{
+    Write-Output "* Configuration file $( $configFile ) found."
+    Write-Output "* Your configuration will not be changed."
 }
-else {
+else
+{
     # Create a config file from the example
     $configContent = Get-Content "$( $installDir )\rport.example.conf" -Raw
-    Write-Host "* Creating new configuration file $( $configFile )."
+    Write-Output "* Creating new configuration file $( $configFile )."
     # Put variables into the config
     $logFile = "$( $installDir )\rport.log"
-    $configContent = $configContent -replace 'server = .*', "server = `"$( $server )`""
+    $configContent = $configContent -replace 'server = .*', "server = `"$( $connect_url )`""
     $configContent = $configContent -replace '.*auth = .*', "auth = `"$( $client_id ):$( $password )`""
     $configContent = $configContent -replace '#id = .*', "id = `"$( (Get-CimInstance -Class Win32_ComputerSystemProduct).UUID )`""
     $configContent = $configContent -replace '#fingerprint = .*', "fingerprint = `"$( $fingerprint )`""
     $configContent = $configContent -replace 'log_file = .*', "log_file = '$( $logFile )'"
     $configContent = $configContent -replace '#name = .*', "name = `"$( $env:computername )`""
     $configContent = $configContent -replace '#data_dir = .*', "data_dir = '$( $dataDir )'"
-    if ($x) {
+    if ($x)
+    {
         # Enable commands and scripts
         $configContent = $configContent -replace '#allow = .*', "allow = ['.*']"
         $configContent = $configContent -replace '#deny = .*', "deny = []"
@@ -126,7 +89,8 @@ else {
     # Get the location of the server
     $geoUrl = "http://ip-api.com/json/?fields=status,country,city"
     $geoData = Invoke-RestMethod -Uri $geoUrl
-    if ("success" -eq $geoData.status) {
+    if ("success" -eq $geoData.status)
+    {
         $configContent = $configContent -replace '#tags = .*', "tags = ['$( $geoData.country )','$( $geoData.city )']"
     }
     # Write the config to a file
@@ -137,18 +101,21 @@ Push-InterpretersToConfig
 Enable-Network-Monitoring
 
 # Register the service
-if (-not(Get-Service rport -erroraction 'silentlycontinue')) {
-    Write-Host ""
-    Write-Host "* Registering rport as a windows service."
+if (-not(Get-Service rport -erroraction 'silentlycontinue'))
+{
+    Write-Output ""
+    Write-Output "* Registering rport as a windows service."
     & "$( $installDir )\rport.exe" --service install --config $configFile
 }
-else {
+else
+{
     Stop-Service -Name rport
 }
 Start-Service -Name rport
 Get-Service rport
 
-if($i) {
+if ($i)
+{
     Install-Tacoscript
 }
 
@@ -172,20 +139,21 @@ rmdir /S /Q "%PROGRAMFILES%"\rport\
 echo Rport removed
 ping -n 2 127.0.0.1 > null
 '
-Write-Host ""
-Write-Host "* Uninstaller created in $( $installDir )\uninstall.bat."
+Write-Output ""
+Write-Output "* Uninstaller created in $( $installDir )\uninstall.bat."
 # Clean Up
 Remove-Item $downloadFile
 
 
 
-function Finish {
+function Finish
+{
     Set-Location $myLocation
-    Write-Host "#
+    Write-Output "#
 #
 #  Installation of rport finished.
 #
-#  This client is now connected to $( $server )
+#  This client is now connected to $( $connect_url )
 #
 #  Look at $( $configFile ) and explore all options.
 #  Logs are written to $( $installDir )/rport.log.
@@ -208,8 +176,9 @@ Thanks for using
 "
 }
 
-function Fail {
-    Write-Host "
+function Fail
+{
+    Write-Output "
 #
 # -------------!!   ERROR  !!-------------
 #
@@ -227,9 +196,11 @@ Try the following to investigate:
 "
 }
 
-if ($Null -eq (get-process "rport" -ea SilentlyContinue)) {
+if ($Null -eq (get-process "rport" -ea SilentlyContinue))
+{
     Fail
 }
-else {
+else
+{
     Finish
 }

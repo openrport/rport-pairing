@@ -47,7 +47,7 @@ func includeFileRaw(rw http.ResponseWriter, name string) {
 
 // Render a template and write it to the response writer
 func renderTemplate(rw http.ResponseWriter, tplFile string, data interface{}) {
-	fmt.Fprintf(rw, "## BEGINNING of rendered templarte %s \n", tplFile)
+	fmt.Fprintf(rw, "## BEGINNING of rendered template %s\n", tplFile)
 	tpl, err := template.ParseFS(templates, tplFile)
 	if err != nil {
 		fmt.Fprintf(rw, "# parsing template file %s failed:%s", tplFile, err)
@@ -58,5 +58,5 @@ func renderTemplate(rw http.ResponseWriter, tplFile string, data interface{}) {
 		fmt.Fprintf(rw, "# executing template file '%s' failed: %s", tplFile, err)
 		log.Printf("executing template file '%s' failed: %s", tplFile, err)
 	}
-	fmt.Fprintf(rw, "\n## END of rendered template %s \n\n", tplFile)
+	fmt.Fprintf(rw, "\n## END of rendered template %s\n\n", tplFile)
 }

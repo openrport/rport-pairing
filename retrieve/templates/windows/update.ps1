@@ -1,18 +1,3 @@
-#======================================================================================================================
-#
-#          FILE: rport-windows-update.ps1
-#
-#   DESCRIPTION: Bootstrap Rport update for Windows
-#
-#          BUGS: https://github.com/cloudradar-monitoring/rport/issues
-#
-#     COPYRIGHT: (c) 2021 by the CloudRadar Team,
-#
-#       LICENSE: MIT
-#  ORGANIZATION: cloudradar GmbH, Potsdam, Germany (cloudradar.io)
-#       CREATED: 01/10/2021
-#        EDITED: 23/11/2021
-#======================================================================================================================
 #Requires -RunAsAdministrator
 # Definition of command line parameters
 Param(
@@ -33,7 +18,7 @@ Param(
 )
 
 if ($h) {
-    Write-Host "Update the rport client.
+    Write-Output "Update the rport client.
 Invoking without parameters updates to the latest stable version.
 
 Parameters:
@@ -66,14 +51,14 @@ $myLocation= (Get-Location).path
 $configFile = 'C:\Program Files\rport\rport.conf'
 $installDir = "$( $Env:Programfiles )\rport"
 if (-Not(Test-Path "$( $installDir )\rport.exe")) {
-    Write-Host "You don't have RPort installed. Nothing to do."
+    Write-Output "You don't have RPort installed. Nothing to do."
     exit 0
 }
 Set-Location $installDir
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 if($f) {
     # If current version is set to 0 an update will always be forced
-    Write-Host "* Forcing an update or redownload"
+    Write-Output "* Forcing an update or redownload"
     $currentVersion = '0'
 }
 else {
@@ -84,7 +69,7 @@ else {
 if ($v) {
     # Set a specific version for the download url
     $url = "https://github.com/cloudradar-monitoring/rport/releases/download/$( $v )/rport_$( $v )_Windows_x86_64.zip"
-    Write-Host "* Downloading  $( $url ) ."
+    Write-Output "* Downloading  $( $url ) ."
 }
 else {
     $url = "https://downloads.rport.io/rport/$( $release )/?arch=Windows_x86_64&gt=$currentVersion"
@@ -92,16 +77,16 @@ else {
 $temp = 'C:\windows\temp\'
 $downloadFile = $temp + "rport_Windows_x86_64.zip"
 
-Write-Host ""
+Write-Output ""
 # Download the package
 try { Invoke-WebRequest -Uri $url -OutFile $downloadFile }
 catch {
-    Write-Host "* Error: Download status code $( $_.Exception.Response.StatusCode.Value__ )"
+    Write-Output "* Error: Download status code $( $_.Exception.Response.StatusCode.Value__ )"
     exit 1
 }
 
 If ((Get-Item $downloadFile).length -eq 0) {
-    Write-Host "* No RPort update needed. You are on the latest $currentVersion version."
+    Write-Output "* No RPort update needed. You are on the latest $currentVersion version."
     Remove-Item $downloadFile
     # Install or update tacoscript
     if($m -eq $false) {
@@ -110,7 +95,7 @@ If ((Get-Item $downloadFile).length -eq 0) {
     Set-Location $myLocation
     exit 0
 }
-Write-Host "* Download finished and stored to $( $downloadFile ) ."
+Write-Output "* Download finished and stored to $( $downloadFile ) ."
 
 function ExtendConfig {
     Add-Content -Path $configFile -Value "[remote-scripts]
@@ -142,7 +127,7 @@ function askForScriptEnabling {
 }
 # Check if the config needs an update
 if (Select-String -Path $configFile -Pattern "[remote-scripts]") {
-    Write-Host "* Scripts are already configured. Not changing."
+    Write-Output "* Scripts are already configured. Not changing."
 }
 else {
     if ($null -eq $enableScripts) {
@@ -152,7 +137,7 @@ else {
 }
 
 # Extract the ZIP file
-Write-Host "* Extracting Rport.exe to $temp"
+Write-Output "* Extracting Rport.exe to $temp"
 if(Test-Path $( $temp + 'rport.example.conf' )) {
     Remove-Item $( $temp + 'rport.example.conf' ) -Force
 }
@@ -163,11 +148,11 @@ Expand-Zip -Path $downloadFile -DestinationPath $temp
 Remove-Item $downloadFile
 Remove-Item $( $temp + 'rport.example.conf' )
 $targetVersion = (& "$( $temp )/rport.exe" --version) -replace "version ",""
-Write-Host "* New version will be $targetVersion."
+Write-Output "* New version will be $targetVersion."
 
 function Enable-Monitoring {
     if ( (Get-Content $configFile) -match "^\[monitoring\]" ){
-        Write-Host "* Monitoring already enabled."
+        Write-Output "* Monitoring already enabled."
         return
     }
     Add-Content -Path $configFile -Value "
@@ -240,8 +225,8 @@ function Invoke-Later {
     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries
     $task = New-ScheduledTask -Action $action -Principal $principal -Trigger $trigger -Settings $settings
     Register-ScheduledTask $taskName -InputObject $task
-    Write-Host "* Task `"$( $Description )`" [$( $taskFile )] scheduled."
-    Write-Host "  It will be executed within $( $Delay ) seconds."
+    Write-Output "* Task `"$( $Description )`" [$( $taskFile )] scheduled."
+    Write-Output "  It will be executed within $( $Delay ) seconds."
 }
 
 # Install or update tacoscript
@@ -265,7 +250,7 @@ Invoke-Later -Description "Restart RPort" -Delay 10 -ScriptBlock {
 }
 Set-Location $myLocation
 
-Write-Host "
+Write-Output "
 #  Update of rport finished.
 #
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
