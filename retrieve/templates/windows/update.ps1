@@ -99,7 +99,7 @@ Write-Output "* Download finished and stored to $( $downloadFile ) ."
 
 function ExtendConfig {
     Add-Content -Path $configFile -Value "[remote-scripts]
-  enabled = $enableScripts"
+  enabled = $($enableScripts)"
 }
 function abortOnNoTerminal {
     if ([System.Environment]::UserInteractive) {
@@ -117,11 +117,11 @@ function askForScriptEnabling {
         $yesNo = Read-Host -prompt 'Do you want to enabale remote script execution? Y/N'
         if ( $yesNo.Tolower().StartsWith('y')) {
             $enableScripts = 'true'
-            return
+            return $enableScripts
         }
-        if ( $yesNo.ToLower().StartsWith('n')) {
+        elseif ( $yesNo.ToLower().StartsWith('n')) {
             $enableScripts = 'false'
-            return
+            return $enableScripts
         }
     } while ($true)
 }
