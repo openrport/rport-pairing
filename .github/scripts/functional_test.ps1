@@ -4,14 +4,14 @@ $ErrorActionPreference = "Stop"
 dir
 Start-Process -NoNewWindow start_srv.bat -RedirectStandardError start_srv.err.txt -RedirectStandardOutput start_srv.out.txt
 Write-Output "Starting Pairing service in the background"
-for ($i = 1; $i -le 15; $i++) {
+for ($i = 1; $i -le 30; $i++) {
     if ((Test-NetConnection -Port 9090 -ComputerName "127.0.0.1").TcpTestSucceeded)
     {
         Write-Output "Pairing sevice is running"
         break
     }
-    sleep 1
-    "[$( $i )]Waiting for server to come up"
+    "[$( $i )] .. Waiting for server to come up"
+    sleep 2
 }
 dir
 Get-Content start_srv.err.txt
@@ -19,7 +19,7 @@ Get-Content start_srv.out.txt
 Write-Output "Generating new pairing code"
 $Uri = 'http://127.0.0.1:9090'
 $Form = @{
-    connect_url = 'http://127.0.0.2:8080'
+    connect_url = 'http://127.0.0.1:8080'
     client_id = 'client1'
     password = 'foobaz'
     fingerprint = '36:98:56:12:f3:dc:e5:8d:ac:96:48:23:b6:f0:42:15'
@@ -33,7 +33,7 @@ Import-Module -Name PSScriptAnalyzer -force
 Invoke-ScriptAnalyzer -Path rport-installer.ps1 -EnableExit -ReportSummary
 
 # Execute the installer
-Write-output "Executing the install now"
+Write-output "Executing the installer now"
 ./rport-installer.ps1 -x
 
 # Verify the client has connected to the local rportd
@@ -43,4 +43,5 @@ Get-Content C:\rport\rportd.log|Select-String -Pattern "client-listener.*Open.*$
 # Execute the update script
 Write-Output "Executing the update script now"
 Invoke-Webrequest ($Uri + '/update') -outfile rport-update.ps1
+Invoke-ScriptAnalyzer -Path rport-update.ps1 -ReportSummary -EnableExit
 ./rport-update.ps1 -t
