@@ -19,10 +19,6 @@ jobs:
             Install-Module -Name PSScriptAnalyzer -Scope CurrentUser -force
           }
 
-      - name: Run pairing service
-        shell: pwsh
-        run: .github/scripts/run_pairing_service.ps1
-
       - name: Run RPort Server
         shell: pwsh
         run: .github/scripts/run_rport_server.ps1
