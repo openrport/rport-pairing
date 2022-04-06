@@ -10,12 +10,18 @@ for ($i = 1; $i -le 30; $i++) {
         Write-Output "Pairing sevice is running"
         break
     }
-    "[$( $i )] .. Waiting for server to come up"
-    sleep 2
+    "[$( $i )/30] .. Waiting for server to come up"
+    sleep 3
 }
-dir
-Get-Content start_srv.err.txt
-Get-Content start_srv.out.txt
+if ($i -eq 31)
+{
+    Write-Output "Pairing service failed to come up"
+    dir
+    Get-Content start_srv.err.txt
+    Get-Content start_srv.out.txt
+    exit 1
+}
+
 Write-Output "Generating new pairing code"
 $Uri = 'http://127.0.0.1:9090'
 $Form = @{
