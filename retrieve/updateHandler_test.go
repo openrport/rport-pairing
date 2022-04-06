@@ -44,10 +44,6 @@ func TestUpdateHandler_ServeHTTP(t *testing.T) {
 			assert.Equal(t, tc.er.httpStatus, recorder.Result().StatusCode)
 			assert.Contains(t, recorder.Body.String(), tc.er.keyword, fmt.Sprintf("Expexted key word '%s' missing.", tc.er.keyword))
 			t.Log("Got HTTP status code", recorder.Result().StatusCode)
-			if recorder.Result().StatusCode != 200 {
-				return
-			}
-
 		})
 	}
 }
