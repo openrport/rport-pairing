@@ -1,9 +1,8 @@
-# RPort-Pairing
-![Go Test](https://github.com/cloudradar-monitoring/rport-pairing/actions/workflows/go_test.yml/badge.svg)
-![Functional Test Linux](https://github.com/cloudradar-monitoring/rport-pairing/actions/workflows/functional_test_linux.yml/badge.svg)
 
-[![GitHub issues](https://img.shields.io/github/issues/cloudradar-monitoring/rport-pairing.svg)](https://github.com/matoous/go-nanoid/issues)
-[![License](https://img.shields.io/badge/license-MIT%20License-blue.svg)](https://github.com/cloudradar-monitoring/rport-pairing/blob/main/LICENSE)
+[![License](https://img.shields.io/github/license/cloudradar-monitoring/rport-pairing?style=for-the-badge)](https://github.com/cloudradar-monitoring/rport-pairing/actions/workflows/functional_test_linux.yml)
+[![Go Tests](https://img.shields.io/github/workflow/status/cloudradar-monitoring/rport-pairing/Go%20Test?style=for-the-badge&label=Go%20Tests&logo=Go)](https://github.com/cloudradar-monitoring/rport-pairing/actions/workflows/functional_test_linux.yml)
+[![Linux Tests](https://img.shields.io/github/workflow/status/cloudradar-monitoring/rport-pairing/Functional%20Test%20Linux?style=for-the-badge&label=Linux%20Tests&logo=Linux)](https://github.com/cloudradar-monitoring/rport-pairing/actions/workflows/functional_test_linux.yml)
+[![Windows Tests](https://img.shields.io/github/workflow/status/cloudradar-monitoring/rport-pairing/Functional%20Test%20Linux?style=for-the-badge&label=Windows%20Tests&logo=Windows)](https://github.com/cloudradar-monitoring/rport-pairing/actions/workflows/functional_test_windows.yml)
 
 A service to install and connect rport clients easily.
 
