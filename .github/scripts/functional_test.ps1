@@ -1,10 +1,14 @@
 $ErrorActionPreference = "Stop"
 
+Write-Output "Running PS Script Analyzer"
+Import-Module -Name PSScriptAnalyzer -force
+Invoke-ScriptAnalyzer -Path rport-installer.ps1 -EnableExit -ReportSummary
+
 # Start the pairing service
 [IO.File]::WriteAllLines("start_srv.bat", "go run cmd/rport-pairing.go  -c ./rport-pairing.conf.example")
 dir
 Start-Process -NoNewWindow start_srv.bat -RedirectStandardError start_srv.err.txt -RedirectStandardOutput start_srv.out.txt
-Write-Output "Staring Pairing service in the background"
+Write-Output "Starting Pairing service in the background"
 for ($i = 1; $i -le 10; $i++) {
     if ((Test-NetConnection -Port 9090 -ComputerName "127.0.0.1").TcpTestSucceeded)
     {
@@ -14,9 +18,6 @@ for ($i = 1; $i -le 10; $i++) {
     sleep 1
     "[ $( $i ) ]Waiting for server to come up"
 }
-
-Write-Output "Running PS Script Analyzer"
-Invoke-ScriptAnalyzer -Path rport-installer.ps1 -EnableExit -ReportSummary
 
 Write-Output "Generating new pairing code"
 $Uri = 'http://127.0.0.1:9090'
@@ -29,7 +30,6 @@ $Form = @{
 $Result = Invoke-RestMethod -Uri $Uri -Method Post -Form $Form
 $Result|ConvertTo-Json
 Invoke-Webrequest ($Uri + '/' + ($Result.pairing_code)) -outfile rport-installer.ps1
-Import-Module -Name PSScriptAnalyzer -force
 
 # Execute the installer
 Write-output "Executing the install now"
