@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 # Start the pairing service
 [IO.File]::WriteAllLines("start_srv.bat", "go run cmd/rport-pairing.go  -c ./rport-pairing.conf.example")
-dir
+Get-ChildItem
 Start-Process -NoNewWindow start_srv.bat -RedirectStandardError start_srv.err.txt -RedirectStandardOutput start_srv.out.txt
 Write-Output "Starting Pairing service in the background"
 for ($i = 1; $i -le 30; $i++) {
@@ -16,7 +16,7 @@ for ($i = 1; $i -le 30; $i++) {
 if ($i -eq 31)
 {
     Write-Output "Pairing service failed to come up"
-    dir
+    Get-ChildItem
     Get-Content start_srv.err.txt
     Get-Content start_srv.out.txt
     exit 1
