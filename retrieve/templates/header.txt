@@ -1,0 +1,12 @@
+##
+## This is the RPort client installer script.
+## It helps you to quickly install the rport client on a variety of Linux distributions.
+## The scripts creates a initial configuration and connects the client to your server.
+##
+## For any inquiries use our GitHub forum on
+## https://github.com/cloudradar-monitoring/rport-pairing/discussions/
+##
+## Copyright cloudradar GmbH, Potsdam Germany, 2022
+## Released under the MIT open-source license.
+## https://github.com/cloudradar-monitoring/rport-pairing/blob/main/LICENSE
+##

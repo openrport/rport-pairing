@@ -1,0 +1,33 @@
+env:
+  - CGO_ENABLED=0
+  - PROJECT=github.com/cloudradar-monitoring/rport-pairing
+builds:
+  - id: rport-pairing
+    main: ./cmd/rport-pairing
+    binary: rport-pairing
+    goos:
+      - linux
+    goarch:
+      - amd64
+archives:
+  - id: rport-pairing
+    name_template: "rport-pairing_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    builds:
+      - rport-pairing
+    replacements:
+      linux: Linux
+      amd64: x86_64
+    files:
+      - rport-pairing.conf.example
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}"
+changelog:
+  sort: asc
+release:
+  github:
+    owner: cloudradar-monitoring
+    name: rport-pairing
+  draft: true
+  prerelease: true

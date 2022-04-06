@@ -1,0 +1,17 @@
+[server]
+  ## Defines the IP address and port the HTTP server listens on.
+  ## Defaults: "0.0.0.0:8080"
+  address = "127.0.0.1:9090"
+  ## External URL the pairing service uses
+  url = "https://pairing.example.local"
+
+[static-deposit]
+  ## You can define a static pairing code that won't be looked up in the cache.
+  ## Static values are returned instead.
+  ## This is useful to quickly test how the scripts are rendered.
+  ## code must be 7 digits long, or whatever the router expects
+  code = "0000000"
+  connect_url = "http://rport.example.com:8080"
+  fingerprint = "2a:c4:79:04:80:ba:7c:60:05:e5:2c:49:6d:74:56:24"
+  client_id = "client1"
+  password = "foobaz"

@@ -1,0 +1,28 @@
+name: Functional Test Windows
+on: [ push ]
+jobs:
+  test:
+    name: Functional Test Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          if (-not(Get-Module -ListAvailable -Name PSScriptAnalyzer)) {
+            Install-Module -Name PSScriptAnalyzer -Scope CurrentUser -force
+          }
+
+      - name: Run RPort Server
+        shell: pwsh
+        run: .github/scripts/run_rport_server.ps1
+
+      - name: Functional Windows Test
+        shell: pwsh
+        run: .github/scripts/functional_test.ps1
