@@ -1,9 +1,4 @@
 $ErrorActionPreference = "Stop"
-
-Write-Output "Running PS Script Analyzer"
-Import-Module -Name PSScriptAnalyzer -force
-Invoke-ScriptAnalyzer -Path rport-installer.ps1 -EnableExit -ReportSummary
-
 # Start the pairing service
 [IO.File]::WriteAllLines("start_srv.bat", "go run cmd/rport-pairing.go  -c ./rport-pairing.conf.example")
 dir
@@ -30,6 +25,10 @@ $Form = @{
 $Result = Invoke-RestMethod -Uri $Uri -Method Post -Form $Form
 $Result|ConvertTo-Json
 Invoke-Webrequest ($Uri + '/' + ($Result.pairing_code)) -outfile rport-installer.ps1
+
+Write-Output "Running PS Script Analyzer"
+Import-Module -Name PSScriptAnalyzer -force
+Invoke-ScriptAnalyzer -Path rport-installer.ps1 -EnableExit -ReportSummary
 
 # Execute the installer
 Write-output "Executing the install now"
