@@ -3,7 +3,7 @@ env:
   - PROJECT=github.com/cloudradar-monitoring/rport-pairing
 builds:
   - id: rport-pairing
-    main: ./cmd/rport-pairing
+    main: ./cmd/rport-pairing.go
     binary: rport-pairing
     goos:
       - linux
