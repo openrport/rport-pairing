@@ -4,16 +4,18 @@ $ErrorActionPreference = "Stop"
 dir
 Start-Process -NoNewWindow start_srv.bat -RedirectStandardError start_srv.err.txt -RedirectStandardOutput start_srv.out.txt
 Write-Output "Starting Pairing service in the background"
-for ($i = 1; $i -le 10; $i++) {
+for ($i = 1; $i -le 15; $i++) {
     if ((Test-NetConnection -Port 9090 -ComputerName "127.0.0.1").TcpTestSucceeded)
     {
         Write-Output "Pairing sevice is running"
         break
     }
     sleep 1
-    "[ $( $i ) ]Waiting for server to come up"
+    "[$( $i )]Waiting for server to come up"
 }
-
+dir
+Get-Content start_srv.err.txt
+Get-Content start_srv.out.txt
 Write-Output "Generating new pairing code"
 $Uri = 'http://127.0.0.1:9090'
 $Form = @{
