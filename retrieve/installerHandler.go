@@ -37,7 +37,7 @@ func (rh *InstallerHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 func renderInstaller(rw http.ResponseWriter, os string, data interface{}) {
 	switch os {
 	case "windows":
-		includeFileRaw(rw, "templates/windows/init.ps1")
+		includeFileRaw(rw, "templates/windows/installer_init.ps1")
 		includeFile(rw, "templates/header.txt")
 		renderTemplate(rw, "templates/windows/vars.ps1", data)
 		includeFile(rw, "templates/windows/functions.ps1")

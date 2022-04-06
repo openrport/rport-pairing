@@ -133,7 +133,7 @@ function Install-Tacoscript
     Write-Output "* Tacoscript dowloaded to $( $file )"
     New-Item -ItemType Directory -Force -Path "$( $tacoDir )\bin"|Out-Null
     Expand-Zip -Path $file -DestinationPath $tacoDir
-    mv "$( $tacoDir )\tacoscript.exe" "$( $tacoDir )\bin"
+    Move-Item "$( $tacoDir )\tacoscript.exe" "$( $tacoDir )\bin"
     $ENV:PATH = "$ENV:PATH;$( $tacoDir )\bin"
 
     [Environment]::SetEnvironmentVariable(
@@ -142,7 +142,7 @@ function Install-Tacoscript
             [EnvironmentVariableTarget]::Machine
     )
     Write-Output "* Tacoscript installed to '$( $tacoDir )' $( (tacoscript.exe --version) -match "Version" )"
-    rm $file -force
+    Remove-Item $file -force
     # Create an uninstaller script for Tacoscript
     Set-Content -Path "$( $tacoDir )\uninstall.bat" -Value 'echo off
 echo off

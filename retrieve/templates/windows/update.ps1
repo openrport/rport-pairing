@@ -1,22 +1,3 @@
-#Requires -RunAsAdministrator
-# Definition of command line parameters
-Param(
-# Use unstable version yes/no
-    [Switch]$t,
-# Enable scripts
-    [Switch]$x,
-# Disable scripts
-    [Switch]$d,
-# Show a help message
-    [Switch]$h,
-# Install or update tacoscript
-    [Switch]$m,
-# Force update
-    [Switch]$f,
-# Install a specific version
-    [String]$v
-)
-
 if ($h) {
     Write-Output "Update the rport client.
 Invoking without parameters updates to the latest stable version.
@@ -31,8 +12,6 @@ Parameters:
 "
     exit
 }
-# VAR_PLACEHOLDER
-# INCLUDE functions.ps1
 $release = If ($t) {
     "unstable"
 }
