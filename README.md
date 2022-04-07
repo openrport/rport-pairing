@@ -76,7 +76,7 @@ This public service is also the predefined default on all RPort server installat
 To run the service on your server proceed as follows.
 
 ````bash
-VERSION="0.0.1"
+VERSION="0.0.2"
 cd /tmp
 curl -LO https://github.com/cloudradar-monitoring/rport-pairing/releases/download/${VERSION}/rport-pairing_${VERSION}_Linux_x86_64.tar.gz
 tar xf rport-pairing_${VERSION}_Linux_x86_64.tar.gz
