@@ -8,7 +8,7 @@ A service to install and connect rport clients easily.
 
 > 📣 This repository holds the sources used to run the public pairing service on https://pairing.rport.io.
 
-##🛸 Use the pairing service
+## 👫 Use the pairing service
 Below you will get detailed information how the pairing works. The explained requests are executed by the RPort user interface when you click on the "Install Client" button.
 ### Deposit the details of your RPort server
 A pairing code is created by submitting data via HTTP post requests. For example
@@ -69,7 +69,7 @@ curl https://pairing.example.com/update -o rport-update.sh
 sudo sh rport-update.sh
 ```
 
-##🚚 Install and run a pairing service
+## 🚚 Install and run a pairing service
 Because the service does not store any data, there is nothing to stop you using the public and free service on https://pairing.rport.io.
 This public service is also the predefined default on all RPort server installations.
 
@@ -101,7 +101,7 @@ Below you will find an example for the [caddy server](https://caddyserver.com/).
 }
 ```
 
-##✏️ Contribute
+## ✏️ Contribute
 ### Test before pushing
 Before you push changes to the Linux shell or Windows Powershell scripts, test them locally.
 To test just the generated scripts no deposit of data is needed. 
