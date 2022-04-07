@@ -10,4 +10,4 @@ for C in $(seq 1 10);do
   echo "${C}: Waiting for server to come up"
   sleep 1
 done
-pgrep -f "port-pairing -c rport-pairing.conf.example"
+pgrep -f "port-pairing -c ./rport-pairing.conf.example"
