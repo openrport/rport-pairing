@@ -7,9 +7,9 @@ trap 'echo "exit $? due to $previous_command"' EXIT
 #
 
 echo "Generating new pairing code"
-curl -sf --location -o response.json \
+curl -sv --location -o response.json \
 --request POST 'http://127.0.0.1:9090' \
---form 'connect_url="http://127.0.0.2:8080"' \
+--form 'connect_url="http://127.0.0.1:8080"' \
 --form 'client_id="client1"' \
 --form 'password="foobaz"' \
 --form 'fingerprint="36:98:56:12:f3:dc:e5:8d:ac:96:48:23:b6:f0:42:15"'
