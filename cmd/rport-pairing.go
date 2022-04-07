@@ -18,12 +18,14 @@ import (
 var Version = "0.0.0-src"
 
 func main() {
-	if *flag.Bool("v", true, "version") {
+	v := false
+	flag.BoolVar(&v, "v", false, "version")
+	confFile := flag.String("c", "rport-pairing.conf", "config file")
+	flag.Parse()
+	if v {
 		fmt.Println("rport-pairing", Version)
 		os.Exit(0)
 	}
-	confFile := flag.String("c", "rport-pairing.conf", "config file")
-	flag.Parse()
 	config := config.New(*confFile)
 	c := cache.New()
 
