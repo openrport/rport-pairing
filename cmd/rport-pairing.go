@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/cloudradar-monitoring/rport-pairing/cors"
 	"github.com/cloudradar-monitoring/rport-pairing/deposit"
 	"github.com/cloudradar-monitoring/rport-pairing/internal/cache"
@@ -10,9 +11,17 @@ import (
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
+	"os"
 )
 
+// Version Placeholder var that gets filled on compile time with -ldflags="-X 'main.Version=N.N.N'"
+var Version = "0.0.0-src"
+
 func main() {
+	if *flag.Bool("v", true, "version") {
+		fmt.Println("rport-pairing", Version)
+		os.Exit(0)
+	}
 	confFile := flag.String("c", "rport-pairing.conf", "config file")
 	flag.Parse()
 	config := config.New(*confFile)
