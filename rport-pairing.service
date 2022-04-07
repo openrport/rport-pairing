@@ -1,0 +1,14 @@
+[Unit]
+Description=Install RPort clients with ease.
+ConditionFileIsExecutable=/usr/local/bin/rport-pairing
+StartLimitIntervalSec=5
+StartLimitBurst=10
+
+[Service]
+ExecStart=/usr/local/bin/rport-pairing "-c" "/etc/rport/rport-pairing.conf"
+User=rport
+Restart=always
+RestartSec=120
+
+[Install]
+WantedBy=multi-user.target
