@@ -23,7 +23,7 @@ clean_up() {
 #   DESCRIPTION:  Check if the RPort server is reachable or abort.
 #----------------------------------------------------------------------------------------------------------------------
 test_connection() {
-  CONN_TEST=$(curl -vIs -m5 "${CONNECT_URL}" 2>&1)
+  CONN_TEST=$(curl -vIs -m5 "${CONNECT_URL}" 2>&1||true)
   if echo "${CONN_TEST}"|grep -q "Connected to";then
     confirm "${CONNECT_URL} is reachable. All good."
   else
