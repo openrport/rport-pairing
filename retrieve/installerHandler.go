@@ -37,12 +37,14 @@ func (rh *InstallerHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 func renderInstaller(rw http.ResponseWriter, os string, data interface{}) {
 	switch os {
 	case "windows":
+		rw.Header().Add("Content-Disposition", "attachment; filename=\"rport-installer.ps1\"")
 		includeFileRaw(rw, "templates/windows/installer_init.ps1")
 		includeFile(rw, "templates/header.txt")
 		renderTemplate(rw, "templates/windows/vars.ps1", data)
 		includeFile(rw, "templates/windows/functions.ps1")
 		includeFile(rw, "templates/windows/install.ps1")
 	default:
+		rw.Header().Add("Content-Disposition", "attachment; filename=\"rport-installer.sh\"")
 		includeFileRaw(rw, "templates/linux/init.sh")
 		includeFile(rw, "templates/header.txt")
 		renderTemplate(rw, "templates/linux/installer_vars.sh", data)

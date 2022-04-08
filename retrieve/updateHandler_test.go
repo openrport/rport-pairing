@@ -42,6 +42,7 @@ func TestUpdateHandler_ServeHTTP(t *testing.T) {
 			recorder := httptest.NewRecorder()
 			updateHandler.ServeHTTP(recorder, request)
 			assert.Equal(t, tc.er.httpStatus, recorder.Result().StatusCode)
+			assert.Contains(t, recorder.Header().Get("Content-Disposition"), "attachment; filename=\"rport-update", "Content-Disposition Header wrong or missing")
 			assert.Contains(t, recorder.Body.String(), tc.er.keyword, fmt.Sprintf("Expexted key word '%s' missing.", tc.er.keyword))
 			t.Log("Got HTTP status code", recorder.Result().StatusCode)
 		})

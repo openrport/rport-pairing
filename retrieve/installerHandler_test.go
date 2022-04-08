@@ -75,18 +75,10 @@ func TestInstallerHandler_ServeHTTP(t *testing.T) {
 			installerHandler.ServeHTTP(recorder, request)
 			assert.Equal(t, tc.er.httpStatus, recorder.Result().StatusCode)
 			assert.Contains(t, recorder.Body.String(), tc.er.keyword, fmt.Sprintf("Expexted key word '%s' missing.", tc.er.keyword))
+			if recorder.Result().StatusCode == 200 {
+				assert.Contains(t, recorder.Header().Get("Content-Disposition"), "attachment; filename=\"rport-installer", "Content-Disposition Header wrong or missing")
+			}
 			t.Log("Got HTTP status code", recorder.Result().StatusCode)
-			if recorder.Result().StatusCode != 200 {
-				return
-			}
-			// Check if the template has been rendered correctly and the deposit values are included
-			if tc.tw.pairingCode != "update" {
-				assert.Contains(t, recorder.Body.String(), "Dynamically inserted variables", "Missing: 'Dynamically inserted variables'")
-				assert.Contains(t, recorder.Body.String(), demoDeposit.ConnectUrl, "Connect URL not found "+demoDeposit.ConnectUrl)
-				assert.Contains(t, recorder.Body.String(), demoDeposit.Fingerprint)
-				assert.Contains(t, recorder.Body.String(), demoDeposit.ClientId)
-				assert.Contains(t, recorder.Body.String(), demoDeposit.Password)
-			}
 		})
 	}
 }

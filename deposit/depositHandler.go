@@ -99,10 +99,11 @@ func (dh *Handler) store(deposit *Deposit) (*Response, error) {
 		PairingCode: id,
 	}
 	response.Expires = time.Now().UTC().Add(ttl)
-	response.Installers.Linux = fmt.Sprintf("curl -o rport-installer.sh %s/%s && sudo sh rport-installer.sh", dh.ServerUrl, id)
+	response.Installers.Linux = fmt.Sprintf(`curl -JO %s/%s
+sudo sh rport-installer.sh`, dh.ServerUrl, id)
 	response.Installers.Windows = fmt.Sprintf(`[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $url="%s/%s"
 Invoke-WebRequest -Uri $url -OutFile "rport-installer.ps1"
-rport-installer.ps1`, dh.ServerUrl, id)
+powershell -ExecutionPolicy Bypass -File .\rport-installer.ps1`, dh.ServerUrl, id)
 	return response, nil
 }
