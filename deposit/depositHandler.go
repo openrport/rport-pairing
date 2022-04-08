@@ -10,6 +10,7 @@ import (
 	"github.com/patrickmn/go-cache"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -25,19 +26,26 @@ type Handler struct {
 }
 
 func (dh *Handler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
-	err := r.ParseMultipartForm(formMaxMem)
-	if err != nil {
-		log.Printf("Error %v\n", err)
-		rw.WriteHeader(http.StatusNotAcceptable)
-		return
-	}
 	deposit := &Deposit{}
-	deposit.ClientId = r.FormValue("client_id")
-	deposit.ConnectUrl = r.FormValue("connect_url")
-	deposit.Fingerprint = r.FormValue("fingerprint")
-	deposit.Password = r.FormValue("password")
-
-	_, err = validateInput(deposit)
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+		err := json.NewDecoder(r.Body).Decode(&deposit)
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusBadRequest)
+			return
+		}
+	} else {
+		err := r.ParseMultipartForm(formMaxMem)
+		if err != nil {
+			log.Printf("Error %v\n", err)
+			rw.WriteHeader(http.StatusNotAcceptable)
+			return
+		}
+		deposit.ClientId = r.FormValue("client_id")
+		deposit.ConnectUrl = r.FormValue("connect_url")
+		deposit.Fingerprint = r.FormValue("fingerprint")
+		deposit.Password = r.FormValue("password")
+	}
+	_, err := validateInput(deposit)
 	if err != nil {
 		rw.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintln(rw, "input validation failed: ", err)

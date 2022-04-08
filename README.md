@@ -11,7 +11,7 @@ A service to install and connect rport clients easily.
 ## 👫 Use the pairing service
 Below you will get detailed information how the pairing works. The explained requests are executed by the RPort user interface when you click on the "Install Client" button.
 ### Deposit the details of your RPort server
-A pairing code is created by submitting data via HTTP post requests. For example
+A pairing code is created by submitting data via HTTP post requests. For example:
 ```bash
 curl --location --request POST 'http://127.0.0.1:9978' \
 --form 'connect_url="http://myrport-server.example.com:8080"' \
@@ -19,17 +19,25 @@ curl --location --request POST 'http://127.0.0.1:9978' \
 --form 'password="sdfs"' \
 --form 'fingerprint="2a:c1:71:09:80:ba:7c:10:05:e5:2c:99:6d:15:56:24"'
 ```
+Using a json-request is supported too:
+````bash
+curl 'http://127.0.0.1:9978' -X POST \
+ -H 'Content-Type: application/json;charset=utf-8' \
+ --data-raw '{
+  "connect_url": "http://myrport-server.example.com:8080",
+  "fingerprint": "2a:c1:71:09:80:ba:7c:10:05:e5:2c:99:6d:15:56:24",
+  "client_id": "asdfsd",
+  "password": "sdfs"
+}'
+````
 
-Links to the installation snippets for Windows and Linux are returned. The deposited data is stored only in the memory of the running process using [go-cache](https://github.com/patrickmn/go-cache). 
+Links to the installation scripts for Windows and Linux are returned. The deposited data is stored only in the memory of the running process using [go-cache](https://github.com/patrickmn/go-cache). 
 
-Sample response:
+Sample response for the above requests:
 ```json
 {
     "pairing_code": "9L6fHH",
-    "expires": {
-        "timestamp": 1607515247,
-        "date_time": "2020-12-09T12:00:47+00:00"
-    },
+    "expires": "2022-04-08T09:39:04.282519Z",
     "installers": {
         "linux": "curl -o rport-installer.sh https://pairing.rport.io/9L6fHH && sudo sh rport-installer.sh",
         "windows": "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12\n$url=\"https://pairing.rport.io/9L6fHH\"\nInvoke-WebRequest -Uri $url -OutFile \"rport-installer.bat\"\nexec rport-installer.bat"
