@@ -22,7 +22,7 @@ var FormFields = map[string]string{
 	"client_id":   "client1",
 }
 
-func TestHandler_ServeHTTP(t *testing.T) {
+func TestFormRequest(t *testing.T) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	for k, v := range FormFields {
@@ -35,8 +35,22 @@ func TestHandler_ServeHTTP(t *testing.T) {
 	}
 	err := writer.Close()
 	require.NoError(t, err)
+	t.Log("From request")
 	request, _ := http.NewRequest(http.MethodPost, "/", bytes.NewReader(body.Bytes()))
 	request.Header.Set("Content-Type", writer.FormDataContentType())
+	executeAndValidate(t, request)
+}
+
+func TestJsonRequest(t *testing.T) {
+	payload, err := json.Marshal(FormFields)
+	require.NoError(t, err)
+	t.Logf("Json request with payload created %s", payload)
+	request, _ := http.NewRequest(http.MethodPost, "/", bytes.NewReader(payload))
+	request.Header.Set("Content-Type", "application/json")
+	executeAndValidate(t, request)
+}
+
+func executeAndValidate(t *testing.T, request *http.Request) {
 	recorder := httptest.NewRecorder()
 	c := cache.New()
 	// Create request handlers
@@ -46,7 +60,7 @@ func TestHandler_ServeHTTP(t *testing.T) {
 	t.Log("Got response body", recorder.Body.String())
 	assert.Equal(t, 200, recorder.Result().StatusCode)
 	var response deposit.Response
-	err = json.Unmarshal(recorder.Body.Bytes(), &response)
+	err := json.Unmarshal(recorder.Body.Bytes(), &response)
 	require.NoError(t, err)
 	t.Log("Got pairing code ", response.PairingCode)
 	// Assert the returned pairing code equals the one stored in the cache
