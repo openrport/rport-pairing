@@ -76,14 +76,13 @@ This public service is also the predefined default on all RPort server installat
 To run the service on your server proceed as follows.
 
 ````bash
-VERSION="0.0.2"
 cd /tmp
-curl -LO https://github.com/cloudradar-monitoring/rport-pairing/releases/download/${VERSION}/rport-pairing_${VERSION}_Linux_x86_64.tar.gz
-tar xf rport-pairing_${VERSION}_Linux_x86_64.tar.gz
+curl -LO https://github.com/cloudradar-monitoring/rport-pairing/releases/latest/download/rport-pairing_Linux_$(uname -m).tar.gz
+tar xf rport-pairing*Linux*.tar.gz
 mv rport-pairing /usr/local/bin/
 mv rport-pairing.conf.example /etc/rport/rport-pairing.conf
 mv rport-pairing.service /etc/systemd/system/
-rm rport-pairing_${VERSION}_Linux_x86_64.tar.gz
+rm rport-pairing*Linux*.tar.gz
 ````
 
 Edit the config `/etc/rport/rport-pairing.conf` and start the service with `systemctl start rport-pairing`.
