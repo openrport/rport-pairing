@@ -193,7 +193,7 @@ prepare_config() {
   fi
 
   if get_geodata; then
-    sed -i "s/#tags = .*/tags = ['$COUNTRY','$CITY']/g" "$CONFIG_FILE"
+    sed -i "s/#tags = .*/tags = [\"$COUNTRY\",\"$CITY\"]/g" "$CONFIG_FILE"
   fi
 }
 

@@ -91,7 +91,7 @@ else
     $geoData = Invoke-RestMethod -Uri $geoUrl
     if ("success" -eq $geoData.status)
     {
-        $configContent = $configContent -replace '#tags = .*', "tags = ['$( $geoData.country )','$( $geoData.city )']"
+        $configContent = $configContent -replace '#tags = .*', "tags = [`"$( $geoData.country )`",`"$( $geoData.city )`"]"
     }
     # Write the config to a file
     $Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
