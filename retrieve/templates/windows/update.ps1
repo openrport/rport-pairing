@@ -129,6 +129,25 @@ Remove-Item $( $temp + 'rport.example.conf' )
 $targetVersion = (& "$( $temp )/rport.exe" --version) -replace "version ",""
 Write-Output "* New version will be $targetVersion."
 
+function Enable-FileRecption {
+    if ( (Get-Content $configFile) -match "^\[file-reception\]" ){
+        Write-Output "* Monitoring already enabled."
+        return
+    }
+    Add-Content -Path $configFile -Value "
+[file-reception]
+  ## Receive files pushed by the server, enabled by default
+  # enabled = true
+  ## The rport client will reject writing files to any of the following folders and its subfolders.
+  ## https://oss.rport.io/docs/no18-file-upload.html
+  ## Wildcards (glob) are supported.
+  ## Linux defaults
+  # protected = ['/bin', '/sbin', '/boot', '/usr/bin', '/usr/sbin', '/dev', '/lib*', '/run']
+  ## Windows defaults
+  # protected = ['C:\Windows\', 'C:\ProgramData']
+"
+}
+
 function Enable-Monitoring {
     if ( (Get-Content $configFile) -match "^\[monitoring\]" ){
         Write-Output "* Monitoring already enabled."
@@ -213,9 +232,10 @@ if($m -eq $false) {
     Install-Tacoscript
 }
 
-# Activate monitoring
+# Activate new features
 Enable-Monitoring
 Enable-Network-Monitoring
+Enable-FileRecption
 # Discover Interpreters
 Push-InterpretersToConfig
 

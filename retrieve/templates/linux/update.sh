@@ -16,9 +16,14 @@ download_package() {
   curl -Ls "${URL}" -o rport.tar.gz
 }
 
+#---  FUNCTION  -------------------------------------------------------------------------------------------------------
+#          NAME:  restart_rport()
+#   DESCRIPTION:  The restart of RPort must be detached from this process in case the update
+#                 is triggered remotely using rport. The rport client would kill the script otherwise here.
+#    PARAMETERS:  none
+#       RETURNS:
+#----------------------------------------------------------------------------------------------------------------------
 restart_rport() {
-  # The restart of RPort must be detached from this process in case the update is triggered remotely using rport.
-  # The rport client would kill the script otherwise here.
   if [ -e /etc/init.d/rport ];then
     RESTART_CMD='/etc/init.d/rport restart'
   else
@@ -50,6 +55,7 @@ update() {
     detect_interpreters
     enable_monitoring
     enable_lan_monitoring
+    enable_file_reception
     mv -f /tmp/rport /usr/local/bin/rport
     restart_rport
   else

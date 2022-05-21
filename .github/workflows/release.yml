@@ -2,6 +2,8 @@ name: Release
 
 on:
   push:
+    # VERSION=$(date +%y%m).$(date +%d|sed s/^0//).$(date +%k%M|tr -d ' ')
+    # git tag $VERSION -m $VERSION && git push --follow-tags
     tags:
       - '*'
 

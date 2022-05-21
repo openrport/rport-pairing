@@ -230,6 +230,48 @@ runs_with_selinux() {
   fi
 }
 
+enable_file_reception() {
+  if [ "$(version_to_int "$TARGET_VERSION")" -lt 6005 ];then
+        # Version does not handle file reception yet.
+        return 0
+  fi
+  if grep -q '\[file-reception\]' "$CONFIG_FILE";then
+    echo "File reception already configured"
+  else
+  cat << EOF >> "$CONFIG_FILE"
+
+
+[file-reception]
+  ## Receive files pushed by the server, enabled by default
+  # enabled = true
+  ## The rport client will reject writing files to any of the following folders and its subfolders.
+  ## https://oss.rport.io/docs/no18-file-reception.html
+  ## Wildcards (glob) are supported.
+  ## Linux defaults
+  # protected = ['/bin', '/sbin', '/boot', '/usr/bin', '/usr/sbin', '/dev', '/lib*', '/run']
+  ## Windows defaults
+  # protected = ['C:\Windows\', 'C:\ProgramData']
+
+EOF
+  fi
+  # Clean up from pre-releases
+  test -e /etc/sudoers.d/rport-filepush && rm -f /etc/sudoers.d/rport-filepush
+  # Create a sudoers file
+  FILERCV_SUDO="/etc/sudoers.d/rport-filereception"
+  if [ -e $FILERCV_SUDO ];then
+    echo "Sudo rule $FILERCV_SUDO already exists"
+  else
+    cat << EOF > $FILERCV_SUDO
+# The following rule allows the rport client to change the ownership of any file retrieved from the rport server
+rport ALL=NOPASSWD: /usr/bin/chown * /var/lib/rport/filepush/*_rport_filepush
+
+# The following rules allows the rport client to move copied files to any folder
+rport ALL=NOPASSWD: /usr/bin/mv /var/lib/rport/filepush/*_rport_filepush *
+
+EOF
+  fi
+}
+
 enable_lan_monitoring() {
   if [ "$(version_to_int "$TARGET_VERSION")" -lt 5008 ];then
       # Version does not handle network interfaces yet.
@@ -278,8 +320,8 @@ detect_interpreters() {
       continue
     fi
     echo "Interpreter '$ITEM' found in '$FOUND'"
-    if grep -q "$ITEM.*$FOUND" "$CONFIG_FILE";then
-      echo "Interpreter '$ITEM = $FOUND' already registered."
+    if grep -q -E "^\s*$ITEM =" "$CONFIG_FILE";then
+      echo "Interpreter '$ITEM' already registered."
       continue
     fi
     # Append the found interpreter to the config
