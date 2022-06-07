@@ -114,6 +114,10 @@ create_user() {
   chown "${USER}":root "$LOG_DIR"
   chown "${USER}":root /var/lib/rport/scripts
   chmod 0700 /var/lib/rport/scripts
+  chown "${USER}":root "$CONFIG_FILE"
+  chmod 0640 "$CONFIG_FILE"
+  chown root:root /usr/local/bin/rport
+  chmod 0755 /usr/local/bin/rport
 }
 
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
