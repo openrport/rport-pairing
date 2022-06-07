@@ -173,6 +173,8 @@ prepare_config() {
     sed -i "s/#deny = .*/deny = []/g" "$CONFIG_FILE"
     sed -i '/^\[remote-scripts\]/a \ \ enabled = true' "$CONFIG_FILE"
     sed -i "s|# script_dir = '/var/lib/rport/scripts'|script_dir = '/var/lib/rport/scripts'|g" "$CONFIG_FILE"
+  else
+    sed -i '/^\[remote-commands\]/a \ \ enabled = false' "$CONFIG_FILE"
   fi
 
   # Set the hostname.
