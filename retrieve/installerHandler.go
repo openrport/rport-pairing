@@ -34,20 +34,20 @@ func (rh *InstallerHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	renderInstaller(rw, os, data)
 }
 
-func renderInstaller(rw http.ResponseWriter, os string, data interface{}) {
+func renderInstaller(rw http.ResponseWriter, os string, data deposit.Deposit) {
 	switch os {
 	case "windows":
 		rw.Header().Add("Content-Disposition", "attachment; filename=\"rport-installer.ps1\"")
 		includeFileRaw(rw, "templates/windows/installer_init.ps1")
 		includeFile(rw, "templates/header.txt")
-		renderTemplate(rw, "templates/windows/vars.ps1", data)
+		renderTemplate(rw, "templates/windows/vars.ps1", deposit.SanitizeForPowerShell(data))
 		includeFile(rw, "templates/windows/functions.ps1")
 		includeFile(rw, "templates/windows/install.ps1")
 	default:
 		rw.Header().Add("Content-Disposition", "attachment; filename=\"rport-installer.sh\"")
 		includeFileRaw(rw, "templates/linux/init.sh")
 		includeFile(rw, "templates/header.txt")
-		renderTemplate(rw, "templates/linux/installer_vars.sh", data)
+		renderTemplate(rw, "templates/linux/installer_vars.sh", deposit.SanitizeForBash(data))
 		includeFile(rw, "templates/linux/vars.sh")
 		includeFile(rw, "templates/linux/functions.sh")
 		includeFile(rw, "templates/linux/install.sh")

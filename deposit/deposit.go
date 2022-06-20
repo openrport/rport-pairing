@@ -1,6 +1,9 @@
 package deposit
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 type Deposit struct {
 	Code        string `mapstructure:"code"`
@@ -17,4 +20,44 @@ type Response struct {
 		Linux   string `json:"linux"`
 		Windows string `json:"windows"`
 	} `json:"installers"`
+}
+
+func rplForBash(in string) (out string) {
+	rpl := map[string]string{
+		"\"": "\\\"",
+		"$":  "\\$",
+	}
+	for s, r := range rpl {
+		in = strings.ReplaceAll(in, s, r)
+	}
+	return in
+}
+func SanitizeForBash(in Deposit) (out Deposit) {
+	return Deposit{
+		Code:        rplForBash(in.Code),
+		ConnectUrl:  rplForBash(in.ConnectUrl),
+		Fingerprint: rplForBash(in.Fingerprint),
+		ClientId:    rplForBash(in.ClientId),
+		Password:    rplForBash(in.Password),
+	}
+}
+
+func rplForPowerShell(in string) (out string) {
+	rpl := map[string]string{
+		"\"": "`\"",
+		"$":  "`$",
+	}
+	for s, r := range rpl {
+		in = strings.ReplaceAll(in, s, r)
+	}
+	return in
+}
+func SanitizeForPowerShell(in Deposit) (out Deposit) {
+	return Deposit{
+		Code:        rplForPowerShell(in.Code),
+		ConnectUrl:  rplForPowerShell(in.ConnectUrl),
+		Fingerprint: rplForPowerShell(in.Fingerprint),
+		ClientId:    rplForPowerShell(in.ClientId),
+		Password:    rplForPowerShell(in.Password),
+	}
 }

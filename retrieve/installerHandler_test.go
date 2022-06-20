@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -20,38 +21,39 @@ type TestInstallerWith struct {
 type ExpectedInstallerResults struct {
 	httpStatus int
 	keyword    string
+	variable   string
 }
 
 func TestInstallerHandler_ServeHTTP(t *testing.T) {
+	c := cache.New()
+	demoDeposit := deposit.Deposit{
+		ConnectUrl:  "https://rport.example.com",
+		Fingerprint: "2a:c1:71:09:80:ba:7c:10:05:e5:2c:99:6d:15:56:24",
+		ClientId:    "client1\";exit",
+		Password:    "foobaz",
+		Code:        "cZ1ZhsG",
+	}
 	var tests = []struct {
 		tw TestInstallerWith
 		er ExpectedInstallerResults
 	}{
 		{
 			TestInstallerWith{"curl/7.79.1", "cZ1ZhsG"},
-			ExpectedInstallerResults{200, "BEGINNING of templates/linux/install.sh"},
+			ExpectedInstallerResults{200, "BEGINNING of templates/linux/install.sh", strings.ReplaceAll(demoDeposit.ClientId, "\"", "\\\"")},
 		},
 		{
 			TestInstallerWith{"curl/7.79.1", "C6esANp"},
-			ExpectedInstallerResults{200, "/bin/sh -e"},
+			ExpectedInstallerResults{200, "/bin/sh -e", strings.ReplaceAll(demoDeposit.ClientId, "\"", "\\\"")},
 		},
 		{
 			TestInstallerWith{"Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.20348.1", "cZ1ZhsG"},
-			ExpectedInstallerResults{200, "function Expand-Zip"},
+			ExpectedInstallerResults{200, "function Expand-Zip", strings.ReplaceAll(demoDeposit.ClientId, "\"", "`\"")},
 		},
 
 		{
 			TestInstallerWith{"go-test", "abcdefg"},
-			ExpectedInstallerResults{404, "#No pairing found by pairing code abcdefg"},
+			ExpectedInstallerResults{404, "#No pairing found by pairing code abcdefg", ""},
 		},
-	}
-	c := cache.New()
-	demoDeposit := deposit.Deposit{
-		ConnectUrl:  "https://rport.example.com",
-		Fingerprint: "2a:c1:71:09:80:ba:7c:10:05:e5:2c:99:6d:15:56:24",
-		ClientId:    "client1",
-		Password:    "foobaz",
-		Code:        "cZ1ZhsG",
 	}
 	// Store pairing data in the cache
 	c.Set("C6esANp", demoDeposit, 10*time.Second)
@@ -75,6 +77,7 @@ func TestInstallerHandler_ServeHTTP(t *testing.T) {
 			installerHandler.ServeHTTP(recorder, request)
 			assert.Equal(t, tc.er.httpStatus, recorder.Result().StatusCode)
 			assert.Contains(t, recorder.Body.String(), tc.er.keyword, fmt.Sprintf("Expexted key word '%s' missing.", tc.er.keyword))
+			assert.Contains(t, recorder.Body.String(), tc.er.variable, "Not found in body:\n"+recorder.Body.String())
 			if recorder.Result().StatusCode == 200 {
 				assert.Contains(t, recorder.Header().Get("Content-Disposition"), "attachment; filename=\"rport-installer", "Content-Disposition Header wrong or missing")
 			}
