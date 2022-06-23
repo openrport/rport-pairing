@@ -129,7 +129,7 @@ Shellcheck must terminate with exit code 0.
 
 #### PowerShell-Windows installer
 ```powershell
-iwr "http://localhost:9090/0000000" -oufile rport-install.ps1
+iwr "http://localhost:9090/0000000" -OutFile rport-install.ps1
 Import-Module -Name PSScriptAnalyzer
 Invoke-ScriptAnalyzer -Path rport-install.ps1
 ```
