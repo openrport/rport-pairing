@@ -163,6 +163,59 @@ ping -n 2 127.0.0.1 > null
     Write-Output "* Tacoscript uninstaller created in $( $tacoDir )\uninstall.bat."
 }
 
+function Set-TomlVar
+{
+    [CmdletBinding(SupportsShouldProcess)]
+    param (
+        [Parameter(Mandatory)]
+        [String]$FileContent,
+        [Parameter(Mandatory)]
+        [String]$Block,
+        [Parameter(Mandatory)]
+        [String]$Key,
+        [Parameter(Mandatory)]
+        [String]$Value
+    )
+    if (-not $FileContent.Contains("[$Block]"))
+    {
+        Write-Error "Block [$( $Block )] not found in toml content"
+        return
+    }
+    $inBlock = $false
+    $new = ""
+    $ok = $false
+    foreach ($Line in $FileContent -split "`n")
+    {
+        if ($Line -match "^\[$( $Block )\]")
+        {
+            $inBlock = $true
+        }
+        elseif ($Line -match "\[.*\]")
+        {
+            $inBlock = $false
+        }
+        if ($inBlock -and ($line -match "^([#, ])*$key = "))
+        {
+            $new = $new + "  $key = $value`n"
+            $ok = $true
+        }
+        else
+        {
+            $new = $new + $line + "`n"
+        }
+    }
+    if(-not $ok)
+    {
+        Write-Error "Key $key not found in toml content"
+        return
+    }
+    if($PSCmdlet.ShouldProcess($FileContent)){
+        $new
+    }
+    $new
+    return
+}
+
 function Add-Netcard
 {
     param (

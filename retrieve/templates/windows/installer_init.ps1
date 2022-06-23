@@ -17,6 +17,15 @@
         .PARAMETER i
         Install Tascoscript along with the RPort Client
 
+        .PARAMETER r
+        Enable file recption
+
+        .PARAMETER g
+        Add a custom tag
+
+        .PARAMETER d
+        Write the config and exit. Service will not be installed. Mainly for testing.
+
         .INPUTS
         None. You cannot pipe objects.
 
@@ -37,10 +46,10 @@
 #Requires -RunAsAdministrator
 # Definition of command line parameters
 Param(
-# Enable remote commands yes/no
-    [switch]$x,
-# Use unstable version yes/no
-    [switch]$t,
-# Install tacoscript
-    [switch]$i
+    [switch]$x, # Enable remote commands yes/no
+    [switch]$t, # Use unstable version yes/no
+    [switch]$i, # Install tacoscript
+    [switch]$r, # Enable file reception
+    [string]$g, # Add a tag
+    [switch]$d # Exit after writing the config
 )

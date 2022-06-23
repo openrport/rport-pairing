@@ -86,19 +86,56 @@ else
         $configContent = $configContent -replace '#deny = .*', "deny = []"
         $configContent = $configContent -replace '\[remote-scripts\]', "$&`n  enabled = true"
     }
+    else
+    {
+        # Disbale commands
+        $configContent = Set-TomlVar -FileContent $configContent -Block "remote-commands" -Key "enabled" -Value "false"
+    }
+    if (-not$r)
+    {
+        # Disable file reception
+        $configContent = Set-TomlVar -FileContent $configContent -Block "file-reception" -Key "enabled" -value "false"
+    }
+    $tags = @()
     # Get the location of the server
     $geoUrl = "http://ip-api.com/json/?fields=status,country,city"
     $geoData = Invoke-RestMethod -Uri $geoUrl
     if ("success" -eq $geoData.status)
     {
-        $configContent = $configContent -replace '#tags = .*', "tags = [`"$( $geoData.country )`",`"$( $geoData.city )`"]"
+        # Add geo data as tags
+        $tags += $geoData.country
+        $tags += $geoData.city
     }
+    if ($g)
+    {
+        # Add a custom tag
+        $tags += $g
+    }
+    if ($tags.Length -gt 0)
+    {
+        $tagsLine = "tags = [`""
+        $tagsLine += $tags -join "`",`""
+        $tagsLine += "`"]"
+        $configContent = $configContent -replace '#tags = .*',$tagsLine
+    }
+
     # Write the config to a file
     $Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
     [IO.File]::WriteAllLines($configFile, $configContent, $Utf8NoBomEncoding)
 }
 Push-InterpretersToConfig
 Enable-Network-Monitoring
+
+if($d)
+{
+    # Exit here
+    Write-Output "Configuraion written to $($configFile)."
+    Write-Output "==================================================================================="
+    Write-Output $configContent
+    Write-Output "==================================================================================="
+    Write-Output "Exit! Service not installed."
+    exit 0
+}
 
 # Register the service
 if (-not(Get-Service rport -erroraction 'silentlycontinue'))
