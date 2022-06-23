@@ -42,13 +42,13 @@ uninstall() {
   done
   if id rport >/dev/null 2>&1; then
     if is_available deluser; then
-      deluser --remove-home rport >/dev/null 2>&1 ||true
-      deluser --only-if-empty --group rport >/dev/null 2>&1 ||true
+      deluser --remove-home rport >/dev/null 2>&1 || true
+      deluser --only-if-empty --group rport >/dev/null 2>&1 || true
     elif is_available userdel; then
       userdel -r -f rport >/dev/null 2>&1
     fi
     if is_available groupdel; then
-      groupdel -f rport >/dev/null 2>&1 ||true
+      groupdel -f rport >/dev/null 2>&1 || true
     fi
     echo " [ DELETED ] User rport"
   fi
@@ -176,7 +176,7 @@ check_prerequisites() {
 }
 
 is_terminal() {
-  if echo "$TERM"|grep -q "^xterm";then
+  if echo "$TERM" | grep -q "^xterm"; then
     return 0
   else
     echo 1>&2 "You are not on a terminal. Please use command line switches to avoid interactive questions."
@@ -185,13 +185,13 @@ is_terminal() {
 }
 
 update_tacoscript() {
-  TACO_VERSION=$(/usr/local/bin/tacoscript --version|grep -o "Version:.*"|awk '{print $2}')
+  TACO_VERSION=$(/usr/local/bin/tacoscript --version | grep -o "Version:.*" | awk '{print $2}')
   cd /tmp
-  test -e tacoscript.tar.gz&&rm -f tacoscript.tar.gz
+  test -e tacoscript.tar.gz && rm -f tacoscript.tar.gz
   curl -LSso tacoscript.tar.gz "https://download.rport.io/tacoscript/${RELEASE}/?arch=Linux_${ARCH}&gt=$TACO_VERSION"
   if tar xzf tacoscript.tar.gz 2>/dev/null; then
     echo ""
-    echo "Updating Tacoscript from ${TACO_VERSION} to latest ${RELEASE} $(./tacoscript --version|grep -o "Version:.*")"
+    echo "Updating Tacoscript from ${TACO_VERSION} to latest ${RELEASE} $(./tacoscript --version | grep -o "Version:.*")"
     mv -f /tmp/tacoscript /usr/local/bin/tacoscript
   else
     echo "Nothing to do. Tacoscript is on the latest version ${TACO_VERSION}."
@@ -209,7 +209,7 @@ install_tacoscript() {
     return 0
   fi
   cd /tmp
-  test -e tacoscript.tar.gz&&rm -f tacoscript.tar.gz
+  test -e tacoscript.tar.gz && rm -f tacoscript.tar.gz
   curl -LJs "https://download.rport.io/tacoscript/${RELEASE}/?arch=Linux_${ARCH}" -o tacoscript.tar.gz
   tar xvzf tacoscript.tar.gz -C /usr/local/bin/ tacoscript
   rm -f tacoscript.tar.gz
@@ -217,13 +217,13 @@ install_tacoscript() {
 }
 
 version_to_int() {
-  echo "$1" | \
-  awk -v 'maxsections=3' -F'.' 'NF < maxsections {printf("%s",$0);for(i=NF;i<maxsections;i++)printf("%s",".0");printf("\n")} NF >= maxsections {print}' | \
-  awk -v 'maxdigits=3' -F'.' '{print $1*10^(maxdigits*2)+$2*10^(maxdigits)+$3}'
+  echo "$1" |
+    awk -v 'maxsections=3' -F'.' 'NF < maxsections {printf("%s",$0);for(i=NF;i<maxsections;i++)printf("%s",".0");printf("\n")} NF >= maxsections {print}' |
+    awk -v 'maxdigits=3' -F'.' '{print $1*10^(maxdigits*2)+$2*10^(maxdigits)+$3}'
 }
 
 runs_with_selinux() {
-  if command -v getenforce >/dev/null 2>&1 && getenforce|grep -q Enforcing;then
+  if command -v getenforce >/dev/null 2>&1 && getenforce | grep -q Enforcing; then
     return 0
   else
     return 1
@@ -231,14 +231,21 @@ runs_with_selinux() {
 }
 
 enable_file_reception() {
-  if [ "$(version_to_int "$TARGET_VERSION")" -lt 6005 ];then
-        # Version does not handle file reception yet.
-        return 0
+  if [ "$(version_to_int "$TARGET_VERSION")" -lt 6005 ]; then
+    # Version does not handle file reception yet.
+    return 0
   fi
-  if grep -q '\[file-reception\]' "$CONFIG_FILE";then
+  if [ "$ENABLE_FILEREC" -eq 0 ]; then
+    echo "File reception disabled."
+    FILEREC_CONF="false"
+  else
+    echo "File reception enabled."
+    FILEREC_CONF="true"
+  fi
+  if grep -q '\[file-reception\]' "$CONFIG_FILE"; then
     echo "File reception already configured"
   else
-  cat << EOF >> "$CONFIG_FILE"
+    cat <<EOF >>"$CONFIG_FILE"
 
 
 [file-reception]
@@ -254,14 +261,19 @@ enable_file_reception() {
 
 EOF
   fi
+  toml_set "$CONFIG_FILE" file-reception enabled $FILEREC_CONF
   # Clean up from pre-releases
   test -e /etc/sudoers.d/rport-filepush && rm -f /etc/sudoers.d/rport-filepush
+  if [ "$ENABLE_FILEREC_SUDO" -eq 0 ]; then
+    # File receptions sudo rules not desired, end this function here
+    return 0
+  fi
   # Create a sudoers file
   FILERCV_SUDO="/etc/sudoers.d/rport-filereception"
-  if [ -e $FILERCV_SUDO ];then
+  if [ -e $FILERCV_SUDO ]; then
     echo "Sudo rule $FILERCV_SUDO already exists"
   else
-    cat << EOF > $FILERCV_SUDO
+    cat <<EOF >$FILERCV_SUDO
 # The following rule allows the rport client to change the ownership of any file retrieved from the rport server
 rport ALL=NOPASSWD: /usr/bin/chown * /var/lib/rport/filepush/*_rport_filepush
 
@@ -273,19 +285,19 @@ EOF
 }
 
 enable_lan_monitoring() {
-  if [ "$(version_to_int "$TARGET_VERSION")" -lt 5008 ];then
-      # Version does not handle network interfaces yet.
-      return 0
+  if [ "$(version_to_int "$TARGET_VERSION")" -lt 5008 ]; then
+    # Version does not handle network interfaces yet.
+    return 0
   fi
-  if grep "^\s*net_[wl]" "$CONFIG_FILE";then
+  if grep "^\s*net_[wl]" "$CONFIG_FILE"; then
     # Network interfaces already configured
     return 0
   fi
   echo "Enabling Network monitoring"
-  for IFACE in /sys/class/net/*;do
+  for IFACE in /sys/class/net/*; do
     IFACE=$(basename "${IFACE}")
     [ "$IFACE" = 'lo' ] && continue
-    if ip addr show "$IFACE"|grep -E -q "inet (10|192\.168|172\.16)\.";then
+    if ip addr show "$IFACE" | grep -E -q "inet (10|192\.168|172\.16)\."; then
       # Private IP
       NET_LAN="$IFACE"
     else
@@ -296,13 +308,13 @@ enable_lan_monitoring() {
   if [ -n "$NET_LAN" ]; then
     sed -i "/^\[monitoring\]/a \ \ net_lan = ['${NET_LAN}' , '1000' ]" "$CONFIG_FILE"
   fi
-  if [ -n "$NET_WAN" ];then
+  if [ -n "$NET_WAN" ]; then
     sed -i "/^\[monitoring\]/a \ \ net_wan = ['${NET_WAN}' , '1000' ]" "$CONFIG_FILE"
   fi
 }
 
 detect_interpreters() {
-  if [ "$(version_to_int "$TARGET_VERSION")" -lt 5008 ];then
+  if [ "$(version_to_int "$TARGET_VERSION")" -lt 5008 ]; then
     # Version does not handle interpreters yet.
     return 0
   fi
@@ -314,17 +326,43 @@ detect_interpreters() {
     echo '[interpreter-aliases]' >>"$CONFIG_FILE"
   fi
   SEARCH="bash zsh ksh csh python3 python2 perl pwsh fish"
-  for ITEM in $SEARCH;do
-    FOUND=$(command -v "$ITEM" 2>/dev/null||true)
-    if [ -z "$FOUND" ];then
+  for ITEM in $SEARCH; do
+    FOUND=$(command -v "$ITEM" 2>/dev/null || true)
+    if [ -z "$FOUND" ]; then
       continue
     fi
     echo "Interpreter '$ITEM' found in '$FOUND'"
-    if grep -q -E "^\s*$ITEM =" "$CONFIG_FILE";then
+    if grep -q -E "^\s*$ITEM =" "$CONFIG_FILE"; then
       echo "Interpreter '$ITEM' already registered."
       continue
     fi
     # Append the found interpreter to the config
     sed -i "/^\[interpreter-aliases\]/a \ \ $ITEM = \"$FOUND\"" "${CONFIG_FILE}"
   done
+}
+
+toml_set() {
+  TOML_FILE="$1"
+  BLOCK="$2"
+  KEY="$3"
+  VALUE="$4"
+  if [ -w "$TOML_FILE" ];then
+    true
+  else
+    2>&1 echo "$TOML_FILE does not exist or is not writable."
+    return 1
+  fi
+  if grep -q "\[$BLOCK\]" "$TOML_FILE";then
+    true
+  else
+    2>&1 echo "$TOML_FILE has no block [$BLOCK]"
+    return 1
+  fi
+  LINE=$(grep -n -A100 "\[$BLOCK\]" "$TOML_FILE"|grep "${KEY} = ")
+  if [ -z "$LINE" ];then
+    2>&1 echo "Key $KEY not found in block $BLOCK"
+    return 1
+  fi
+  LINE_NO=$(echo "$LINE"|cut -d'-' -f1)
+  sed -i "${LINE_NO}s/.*/  ${KEY} = ${VALUE}/" "$TOML_FILE"
 }

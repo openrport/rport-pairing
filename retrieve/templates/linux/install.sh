@@ -199,7 +199,16 @@ prepare_config() {
   fi
 
   if get_geodata; then
-    sed -i "s/#tags = .*/tags = [\"$COUNTRY\",\"$CITY\"]/g" "$CONFIG_FILE"
+    if [ -n "$TAGS" ];then
+      TAGS=$(printf "%s:%s:%s" "$TAGS" "$COUNTRY" "$CITY")
+    else
+      TAGS=$(printf "%s:%s" "$COUNTRY" "$CITY")
+    fi
+  fi
+  if [ -n "$TAGS" ];then
+    # shellcheck disable=SC2001
+    TAGS='["'$(echo "$TAGS"|sed s/":"/\",\"/g)'"]'
+    sed -i "s/#tags = .*/tags = ${TAGS}/g" "$CONFIG_FILE"
   fi
 }
 
@@ -367,9 +376,14 @@ Options:
 -u  Uninstall the rport client and all configurations and logs.
 -x  Enable unrestricted command execution in rport.conf.
 -s  Create sudo rules to grant full root access to the rport user.
--a  Use a different user account than 'rport'. Will be created if not present.
+-r  Enable file reception. (sending files from server to client)
+-b  Create sudo rule for file reception to give full filesystem write access. Requires -r.
+-a  <USER> Use a different user account than 'rport'. Will be created if not present.
 -i  Install Tacoscript along with the RPort client.
 -l  Install with SELinux enabled.
+-g <TAG> Add an extra tag to the client.
+
+Learn more https://kb.rport.io/connecting-clients#advanced-pairing-options
 EOF
   exit 0
 }
@@ -452,7 +466,10 @@ ENABLE_SUDO=0
 RELEASE=stable
 INSTALL_TACO=0
 SELINUX_FORCE=0
-while getopts 'hvfcsuxstila:' opt; do
+ENABLE_FILEREC=0
+ENABLE_FILEREC_SUDO=0
+TAGS=""
+while getopts 'hvfcsuxstilrba:g:' opt; do
   case "${opt}" in
 
   h) help ; exit 0 ;;
@@ -468,8 +485,10 @@ while getopts 'hvfcsuxstila:' opt; do
   t) RELEASE=unstable ;;
   i) INSTALL_TACO=1;;
   l) SELINUX_FORCE=1;;
-  # Execute a single function. For dev and debug only  #
+  r) ENABLE_FILEREC=1;;
+  b) ENABLE_FILEREC_SUDO=1;;
   a) USER=${OPTARG} ;;
+  g) TAGS=${OPTARG} ;;
 
   \?)
     echo "Option does not exist."

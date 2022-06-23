@@ -296,7 +296,9 @@ ENABLE_SUDO=2
 RELEASE=stable
 ENABLE_SCRIPTS=undef
 VERSION=undef
-while getopts "hcuxdsmtv:" opt; do
+ENABLE_FILEREC=0
+ENABLE_FILEREC_SUDO=0
+while getopts "hcuxdsmrbtv:" opt; do
   case "${opt}" in
 
   h) ACTION=help ;;
@@ -308,6 +310,8 @@ while getopts "hcuxdsmtv:" opt; do
   s) ENABLE_SUDO=1 ;;
   t) RELEASE=unstable ;;
   m) ENABLE_TACOSCRIPT=0;;
+  r) ENABLE_FILEREC=1;;
+  b) ENABLE_FILEREC_SUDO=1;;
 
   \?)
     echo "Option does not exist."
