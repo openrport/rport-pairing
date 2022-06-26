@@ -14,5 +14,7 @@ Param(
 # Force update
     [Switch]$f,
 # Install a specific version
-    [String]$v
+    [String]$v,
+# Enable file reception
+    [Switch]$r
 )

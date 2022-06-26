@@ -1,4 +1,5 @@
-if ($h) {
+if ($h)
+{
     Write-Output "Update the rport client.
 Invoking without parameters updates to the latest stable version.
 
@@ -9,48 +10,58 @@ Parameters:
 -v [version] Upgrade to the specified version.
 -m  do not install or update tacoscript
 -f  force update without comparing versions
+-r  activate file reception
 "
     exit
 }
-$release = If ($t) {
+$release = If ($t)
+{
     "unstable"
 }
-Else {
+Else
+{
     "stable"
 }
 $enableScripts = $null
-$enableScripts = If ($x) {
+$enableScripts = If ($x)
+{
     "true"
 }
-$enableScripts = If ($d) {
+$enableScripts = If ($d)
+{
     "false"
 }
 
-$myLocation= (Get-Location).path
+$myLocation = (Get-Location).path
 $configFile = 'C:\Program Files\rport\rport.conf'
 $installDir = "$( $Env:Programfiles )\rport"
-if (-Not(Test-Path "$( $installDir )\rport.exe")) {
+if (-Not(Test-Path "$( $installDir )\rport.exe"))
+{
     Write-Output "You don't have RPort installed. Nothing to do."
     exit 0
 }
 Set-Location $installDir
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-if($f) {
+if ($f)
+{
     # If current version is set to 0 an update will always be forced
     Write-Output "* Forcing an update or redownload"
     $currentVersion = '0'
 }
-else {
+else
+{
     $versionString = (& 'C:\Program Files\rport\rport.exe' --version)
     $currentVersion = $( $versionString -split " " )[1]
 }
 
-if ($v) {
+if ($v)
+{
     # Set a specific version for the download url
     $url = "https://github.com/cloudradar-monitoring/rport/releases/download/$( $v )/rport_$( $v )_Windows_x86_64.zip"
     Write-Output "* Downloading  $( $url ) ."
 }
-else {
+else
+{
     $url = "https://downloads.rport.io/rport/$( $release )/?arch=Windows_x86_64&gt=$currentVersion"
 }
 $temp = 'C:\windows\temp\'
@@ -58,17 +69,23 @@ $downloadFile = $temp + "rport_Windows_x86_64.zip"
 
 Write-Output ""
 # Download the package
-try { Invoke-WebRequest -Uri $url -OutFile $downloadFile }
-catch {
+try
+{
+    Invoke-WebRequest -Uri $url -OutFile $downloadFile
+}
+catch
+{
     Write-Output "* Error: Download status code $( $_.Exception.Response.StatusCode.Value__ )"
     exit 1
 }
 
-If ((Get-Item $downloadFile).length -eq 0) {
+If ((Get-Item $downloadFile).length -eq 0)
+{
     Write-Output "* No RPort update needed. You are on the latest $currentVersion version."
     Remove-Item $downloadFile
     # Install or update tacoscript
-    if($m -eq $false) {
+    if ($m -eq $false)
+    {
         Install-Tacoscript
     }
     Set-Location $myLocation
@@ -76,12 +93,15 @@ If ((Get-Item $downloadFile).length -eq 0) {
 }
 Write-Output "* Download finished and stored to $( $downloadFile ) ."
 
-function ExtendConfig {
+function ExtendConfig
+{
     Add-Content -Path $configFile -Value "[remote-scripts]
-  enabled = $($enableScripts)"
+  enabled = $( $enableScripts )"
 }
-function abortOnNoTerminal {
-    if ([System.Environment]::UserInteractive) {
+function abortOnNoTerminal
+{
+    if ([System.Environment]::UserInteractive)
+    {
         return
     }
     Remove-Item -Path $downloadFile -Force
@@ -90,26 +110,33 @@ function abortOnNoTerminal {
     $host.ui.WriteErrorLine("execute with '-d' to disable remote script execution.")
     exit 1
 }
-function askForScriptEnabling {
+function askForScriptEnabling
+{
     abortOnNoTerminal
-    do {
+    do
+    {
         $yesNo = Read-Host -prompt 'Do you want to enabale remote script execution? Y/N'
-        if ( $yesNo.Tolower().StartsWith('y')) {
+        if ( $yesNo.Tolower().StartsWith('y'))
+        {
             $enableScripts = 'true'
             return $enableScripts
         }
-        elseif ( $yesNo.ToLower().StartsWith('n')) {
+        elseif ( $yesNo.ToLower().StartsWith('n'))
+        {
             $enableScripts = 'false'
             return $enableScripts
         }
     } while ($true)
 }
 # Check if the config needs an update
-if (Select-String -Path $configFile -Pattern "[remote-scripts]") {
+if (Select-String -Path $configFile -Pattern "[remote-scripts]")
+{
     Write-Output "* Scripts are already configured. Not changing."
 }
-else {
-    if ($null -eq $enableScripts) {
+else
+{
+    if ($null -eq $enableScripts)
+    {
         askForScriptEnabling
     }
     ExtendConfig
@@ -117,20 +144,25 @@ else {
 
 # Extract the ZIP file
 Write-Output "* Extracting Rport.exe to $temp"
-if(Test-Path $( $temp + 'rport.example.conf' )) {
+if (Test-Path $( $temp + 'rport.example.conf' ))
+{
     Remove-Item $( $temp + 'rport.example.conf' ) -Force
 }
-if(Test-Path $( $temp + 'rport.exe' )) {
+if (Test-Path $( $temp + 'rport.exe' ))
+{
     Remove-Item $( $temp + 'rport.exe' ) -Force
 }
 Expand-Zip -Path $downloadFile -DestinationPath $temp
 Remove-Item $downloadFile
 Remove-Item $( $temp + 'rport.example.conf' )
-$targetVersion = (& "$( $temp )/rport.exe" --version) -replace "version ",""
+$targetVersion = (& "$( $temp )/rport.exe" --version) -replace "version ", ""
 Write-Output "* New version will be $targetVersion."
 
-function Enable-FileRecption {
-    if ( (Get-Content $configFile) -match "^\[file-reception\]" ){
+# Add file reception to the config file
+function Add-FileRecption
+{
+    if ((Get-Content $configFile) -match "^\[file-reception\]")
+    {
         Write-Output "* Monitoring already enabled."
         return
     }
@@ -148,9 +180,12 @@ function Enable-FileRecption {
 "
 }
 
-function Enable-Monitoring {
-    if ( (Get-Content $configFile) -match "^\[monitoring\]" ){
-        Write-Output "* Monitoring already enabled."
+# Add Monitoring reception to the config file
+function Add-Monitoring
+{
+    if ((Get-Content $configFile) -match "^\[monitoring\]")
+    {
+        Write-Output "* Monitoring section already present in configuration file."
         return
     }
     Add-Content -Path $configFile -Value "
@@ -198,7 +233,8 @@ function Enable-Monitoring {
   #net_wan = ['', '1000']"
 }
 
-function Invoke-Later {
+function Invoke-Later
+{
     Param
     (
         [Parameter(Mandatory = $true)]
@@ -211,7 +247,8 @@ function Invoke-Later {
     $taskName = 'Invoke-Later-' + (Get-Random)
     $taskFile = [System.Environment]::GetEnvironmentVariable('TEMP', 'Machine') + '\' + $taskName + '.ps1'
     $ScriptBlock.Split("`n") | ForEach-Object {
-        if ($_) {
+        if ($_)
+        {
             $_.Trim() | Out-File -FilePath $taskFile -Append
         }
     }
@@ -228,16 +265,23 @@ function Invoke-Later {
 }
 
 # Install or update tacoscript
-if($m -eq $false) {
+if ($m -eq $false)
+{
     Install-Tacoscript
 }
 
-# Activate new features
-Enable-Monitoring
-Enable-Network-Monitoring
-Enable-FileRecption
-# Discover Interpreters
-Push-InterpretersToConfig
+# Add new features
+Add-Monitoring
+Add-FileRecption
+# Enable new features
+$configContent = Get-Content $configFile -Encoding utf8
+$configContent = Enable-InterpreterAlias -ConfigContent $configContent
+$configContent = Enable-Network-Monitoring -ConfigContent $configContent
+# Enable/Disable file reception
+$configContent = Enable-FileReception -ConfigContent $configContent -Switch $r
+# Finally, write the config to a file
+$Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
+[IO.File]::WriteAllLines($configFile, $configContent, $Utf8NoBomEncoding)
 
 # Create a scheduled task to restart RPort.
 Invoke-Later -Description "Restart RPort" -Delay 10 -ScriptBlock {

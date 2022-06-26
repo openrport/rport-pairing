@@ -1,3 +1,26 @@
+$InformationPreference = "continue"
+$ErrorActionPreference = "Stop"
+$PSDefaultParameterValues = @{ '*:Encoding' = 'utf8' }
+trap
+{
+    "
+#
+# -------------!!   ERROR  !!-------------
+#
+# Installation or updare of rport finished with errors.
+#
+
+Try the following to investigate:
+1) sc query rport
+
+2) open C:\Program Files\rport\rport.log
+
+3) READ THE DOCS on https://kb.rport.io
+
+4) Request support on https://github.com/cloudradar-monitoring/rport-pairing/discussions/categories/help-needed
+"
+}
+
 # Extract a ZIP file
 function Expand-Zip
 {
@@ -21,31 +44,27 @@ function Expand-Zip
 
 function Add-ToConfig
 {
-    <#
-    .SYNOPSIS
-        Add a line to a block of a the rport toml configuration.
-    #>
+    [OutputType([String])]
     Param(
+        [Parameter(Mandatory)]
+        [Object[]]$ConfigContent,
         [parameter(Mandatory = $true)]
         [String] $Block,
         [parameter(Mandatory = $true)]
         [String] $Line
     )
-    $configContent = Get-Content $configFile -Raw
+    <#
+    .SYNOPSIS
+        Add a line to a block of a the rport toml configuration.
+    #>
     if ($configContent -NotMatch "\[$block\]")
     {
         # Append the block if missing
         $configContent = "$configContent`n`n[$block]"
     }
-    if ($configContent -Match [System.Text.RegularExpressions.Regex]::Escape($Line))
-    {
-        Write-Output "$Line already present in configuration."
-        return
-    }
-    Write-Output "* Adding `"$Line`" to [$Block]"
+    Write-Information "* Adding `"$Line`" to [$Block]"
     $configContent = $configContent -replace "\[$Block\]", "$&`n  $Line"
-    $Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
-    [IO.File]::WriteAllLines($configFile, $configContent, $Utf8NoBomEncoding)
+    $configContent
 }
 
 function Find-Interpreter
@@ -66,25 +85,67 @@ function Find-Interpreter
     $interpreters
 }
 
-function Push-InterpretersToConfig
+function Enable-FileReception
+{
+    [OutputType([String])]
+    param (
+        [Parameter(Mandatory)]
+        [Object[]]$ConfigContent,
+        [Parameter(Mandatory)]
+        [Boolean]$Switch
+    )
+    if ($Switch)
+    {
+        $ConfigContent = Set-TomlVar -ConfigContent $ConfigContent "file-reception" -Key "enabled" -value "true"
+        Write-Information "* File reception has been enabled."
+    }
+    else
+    {
+        $ConfigContent = Set-TomlVar -ConfigContent $ConfigContent "file-reception" -Key "enabled" -value "false"
+        Write-Information "* File reception has been disabled."
+    }
+    $ConfigContent
+    return
+}
+
+function Enable-InterpreterAlias
 {
     <#
     .SYNOPSIS
         Push interpreters to the rport.conf
     #>
+    [OutputType([Object[]])]
+    param (
+        [Parameter(Mandatory)]
+        [Object[]]$ConfigContent
+    )
+
     if (-Not([System.Version]$targetVersion -ge [System.Version]"0.5.12"))
     {
         Write-Output "* RPort version $targetVersion does not support Interpreter Aliases"
         return
     }
-    Write-Output "* Looking for script interpreters."
+    Write-Information "* Looking for script interpreters."
     $interpreters = Find-Interpreter
-    Write-Output "* $( $interpreters.count ) script interpreters found."
+    Write-Information "* $( $interpreters.count ) script interpreters found."
+    if ($interpreters.count -eq 0)
+    {
+        $ConfigContent
+        return
+    }
     $interpreters.keys|ForEach-Object {
         $key = $_
         $value = $interpreters[$_]
-        Add-ToConfig -Block "interpreter-aliases" -Line "$key = '$value'"
+        if (Test-TomlKeyExist -ConfigContent $ConfigContent -Block "interpreter-aliases" -Key $key)
+        {
+            Write-Information ": $key already present in configuration."
+        }
+        else
+        {
+            $ConfigContent = Add-ToConfig -ConfigContent $configContent -Block "interpreter-aliases" -Line "$( $key ) = '$( $value )'"
+        }
     }
+    $configContent
 }
 
 # Update Tacoscript
@@ -163,12 +224,52 @@ ping -n 2 127.0.0.1 > null
     Write-Output "* Tacoscript uninstaller created in $( $tacoDir )\uninstall.bat."
 }
 
+function Test-TomlKeyExist
+{
+    [OutputType([Boolean])]
+    param (
+        [Parameter(Mandatory)]
+        [Object[]]$ConfigContent,
+        [Parameter(Mandatory)]
+        [String]$Block,
+        [Parameter(Mandatory)]
+        [String]$Key
+    )
+    if (-not$ConfigContent -match [Regex]::Escape("^[$( $Block )]"))
+    {
+        $ConfigContent
+        Write-Error "Block [$( $Block )] not found in config content"
+        $false
+        return
+    }
+    $inBlock = $false
+    foreach ($Line in $ConfigContent -split "`n")
+    {
+        if ($Line -match "^\[$( $Block )\]")
+        {
+            $inBlock = $true
+        }
+        elseif ($Line -match "^\[.*\]")
+        {
+            $inBlock = $false
+        }
+        if ($inBlock -and ($line -match "$key = ") -and ($line -notmatch "#.*$key ="))
+        {
+            $true
+            return
+        }
+    }
+    $false
+    return
+}
+
 function Set-TomlVar
 {
+    [OutputType([String])]
     [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory)]
-        [String]$FileContent,
+        [Object[]]$ConfigContent,
         [Parameter(Mandatory)]
         [String]$Block,
         [Parameter(Mandatory)]
@@ -176,21 +277,22 @@ function Set-TomlVar
         [Parameter(Mandatory)]
         [String]$Value
     )
-    if (-not $FileContent.Contains("[$Block]"))
+    if (-not$ConfigContent -match [Regex]::Escape("^[$( $Block )]"))
     {
-        Write-Error "Block [$( $Block )] not found in toml content"
+        Write-Error "Block [$( $Block )] not found in config content"
+        $configContent
         return
     }
     $inBlock = $false
     $new = ""
     $ok = $false
-    foreach ($Line in $FileContent -split "`n")
+    foreach ($Line in $configContent -split "`n")
     {
         if ($Line -match "^\[$( $Block )\]")
         {
             $inBlock = $true
         }
-        elseif ($Line -match "\[.*\]")
+        elseif ($Line -match "^\[.*\]")
         {
             $inBlock = $false
         }
@@ -198,19 +300,21 @@ function Set-TomlVar
         {
             $new = $new + "  $key = $value`n"
             $ok = $true
+            $inBlock = $false
         }
         else
         {
             $new = $new + $line + "`n"
         }
     }
-    if(-not $ok)
+    if (-not$ok)
     {
-        Write-Error "Key $key not found in toml content"
+        Write-Error "Key $key not found in config content"
         return
     }
-    if($PSCmdlet.ShouldProcess($FileContent)){
-        $new
+    if ( $PSCmdlet.ShouldProcess($ConfigContent))
+    {
+        Write-Debug $new
     }
     $new
     return
@@ -218,61 +322,94 @@ function Set-TomlVar
 
 function Add-Netcard
 {
+    [OutputType([Object[]])]
     param (
+        [Parameter(Mandatory)]
+        [Object[]]$ConfigContent,
         [Parameter(Mandatory)]
         [CimInstance[]]$Interface,
         [Parameter(Mandatory)]
         [ValidateSet('net_lan', 'net_wan')]
-        [String[]]$Type
+        [String]$InterfaceType
     )
+    if ($Interface.Length -gt 1)
+    {
+        Write-Information ""
+        Write-Information "-----------------------::   CAUTION  ::-----------------------"
+        Write-Information ": You have more than one connected $( $InterfaceType ) card."
+        Write-Information ": Just the first one will be activated for the monitoring."
+        Write-Information ": Review the configuration file and adjust to your needs manually once the installation has finished."
+        Write-Information ""
+    }
     $InterfaceAlias = $Interface[0].InterfaceAlias
     $linkSpeed = ((Get-Netadapter|Where-Object Name -eq $InterfaceAlias)[0].LinkSpeed) -replace " Gbps", "000" -replace " Mbps", ""
     $linkSpeed = [math]::floor($linkSpeed);
-    $configContent = Get-Content $configFile -Raw
-    if ($configContent -match "[^#]\s*$Type = \[")
+    if (Test-TomlKeyExist -ConfigContent $ConfigContent -Block "monitoring" -Key $InterfaceType)
     {
-        Write-Output "* Monitoring for $Type '$InterfaceAlias' already activated. Skipping."
+        Write-Information "* Monitoring for $InterfaceType '$InterfaceAlias' already activated. Skipping."
+        $ConfigContent
         return
     }
-    if ($configContent -match "#+\s*$( $Type ) =")
+    $ConfigContent = Set-TomlVar -ConfigContent $ConfigContent -Block "monitoring" -Key $InterfaceType -Value "['$InterfaceAlias','$linkSpeed']"
+    Write-Information "* Monitoring for $InterfaceType '$InterfaceAlias' activated."
+    $ConfigContent
+}
+
+function Select-EnabledNetCard
+{
+    [OutputType([Object[]])]
+    param (
+        [Parameter(Position = 1, ValueFromPipeline = $true)]
+        [object[]]$NetAdapters
+    )
+    process
     {
-        # Try to replace the commented example
-        $configContent = $configContent -replace "#+\s*$( $Type ) = .*", "$( $Type ) = ['$InterfaceAlias', '$linkSpeed']"
+        $filtered = @()
+        foreach ($NetAdapter in $NetAdapters)
+        {
+            if ("Up" -eq (Get-NetAdapter -Name $NetAdapter.InterfaceAlias).Status)
+            {
+                $filtered += $NetAdapter
+            }
+        }
+        $filtered
+        return
     }
-    else
-    {
-        $configContent = $configContent -replace '\[monitoring\]', "$&`n  $( $Type ) = ['$InterfaceAlias', '$linkSpeed']"
-    }
-    Write-Output "* Monitoring for $Type '$InterfaceAlias' activated."
-    $Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
-    [IO.File]::WriteAllLines($configFile, $configContent, $Utf8NoBomEncoding)
 }
 
 function Enable-Network-Monitoring
 {
+    [OutputType([Object[]])]
+    param (
+        [Parameter(Mandatory)]
+        [Object[]]$ConfigContent
+    )
     if (-Not([System.Version]$targetVersion -ge [System.Version]"0.5.8"))
     {
-        Write-Output "* RPort version $targetVersion does not support Lan/Wan Monitoring"
+        Write-Information "* RPort version $targetVersion does not support Lan/Wan Monitoring"
         return
     }
-    if ((get-content $configFile) -match "^\s*net_[lw]an")
+    if ($ConfigContent -match "^\s*net_[lw]an")
     {
-        Write-Output "* Network Monitoring already enabled"
+        Write-Information "* Network Monitoring already enabled"
+        $ConfigContent
         return
     }
-    $netLan = (Get-NetIPAddress|Where-Object IPAddress -Match "^(10|192.168|172.16)")
-    $netWan = (Get-NetIPAddress|Where-Object AddressFamily -eq "IPv4"|Where-Object IPAddress -NotMatch "^(10|192.168|172.16|127.)")
+    $netLan = (Get-NetIPAddress|Where-Object IPAddress -Match "^(10|192.168|172.16)"|Select-EnabledNetCard)
+    $netWan = (Get-NetIPAddress|Where-Object AddressFamily -eq "IPv4"|Where-Object IPAddress -NotMatch "^(10|192.168|172.16|127.)"|Select-EnabledNetCard)
     if (-Not$netLan -and -Not$netWan)
     {
-        Write-Output "* No Lan cards detected. Check manually with 'Get-NetAdapter'"
+        Write-Information "* No Lan cards detected. Check manually with 'Get-NetAdapter'"
+        $ConfigContent
         return
     }
     if ($netLan)
     {
-        Add-Netcard $netLan 'net_lan'
+        $ConfigContent = Add-Netcard -ConfigContent $ConfigContent -Interface $netLan -InterfaceType 'net_lan'
     }
     if ($netWan)
     {
-        Add-Netcard $netWan 'net_wan'
+        $ConfigContent = Add-Netcard -ConfigContent $ConfigContent -Interface $netWan -InterfaceType 'net_wan'
     }
+    $ConfigContent
 }

@@ -11,6 +11,23 @@ $url = "https://downloads.rport.io/rport/$( $release )/latest.php?arch=Windows_x
 $downloadFile = "C:\Windows\temp\rport_$( $release )_Windows_x86_64.zip"
 $installDir = "$( $Env:Programfiles )\rport"
 $dataDir = "$( $installDir )\data"
+
+# Check if RPor is already installed
+if (Test-Path $installDir)
+{
+    Write-Output "RPort is already installed."
+    Write-Output "Download and execute the update script."
+    Write-Output "Try the following:"
+    Write-Output 'cd $env:temp
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$url="https://pairing.rport.io/update"
+Invoke-WebRequest -Uri $url -OutFile "rport-update.ps1"
+powershell -ExecutionPolicy Bypass -File .\rport-update.ps1
+rm .\rport-update.ps1 -Force
+'
+    exit
+}
+
 # Test the connection to the RPort server first
 $test_response = $null
 try
@@ -45,93 +62,77 @@ if (-not(Test-Path $downloadFile -PathType leaf))
 }
 
 # Create a directory
-if (-not(Test-Path $installDir))
-{
-    mkdir $installDir| Out-Null
-}
-# Create the data directory
-if (-not(Test-Path $dataDir))
-{
-    mkdir $dataDir| Out-Null
-}
+mkdir $installDir| Out-Null
+mkdir $dataDir| Out-Null
+
 
 # Extract the ZIP file
 Expand-Zip -Path $downloadFile -DestinationPath $installDir
 $targetVersion = (& "$( $installDir )/rport.exe" --version) -replace "version ", ""
 Write-Output "* RPort Client version $targetVersion installed."
 $configFile = "$( $installDir )\rport.conf"
-if (Test-Path $configFile -PathType leaf)
+
+# Create a config file from the example
+$configContent = Get-Content "$( $installDir )\rport.example.conf" -Encoding utf8
+Write-Output "* Creating new configuration file $( $configFile )."
+# Put variables into the config
+$logFile = "$( $installDir )\rport.log"
+$configContent = $configContent -replace 'server = .*', "server = `"$( $connect_url )`""
+$configContent = $configContent -replace '.*auth = .*', "  auth = `"$( $client_id ):$( $password )`""
+$configContent = $configContent -replace '#id = .*', "id = `"$( (Get-CimInstance -Class Win32_ComputerSystemProduct).UUID )`""
+$configContent = $configContent -replace '#fingerprint = .*', "fingerprint = `"$( $fingerprint )`""
+$configContent = $configContent -replace 'log_file = .*', "log_file = '$( $logFile )'"
+$configContent = $configContent -replace '#name = .*', "name = `"$( $env:computername )`""
+$configContent = $configContent -replace '#data_dir = .*', "data_dir = '$( $dataDir )'"
+if ($x)
 {
-    Write-Output "* Configuration file $( $configFile ) found."
-    Write-Output "* Your configuration will not be changed."
+    # Enable commands and scripts
+    $configContent = $configContent -replace '#allow = .*', "allow = ['.*']"
+    $configContent = $configContent -replace '#deny = .*', "deny = []"
+    $configContent = $configContent -replace '\[remote-scripts\]', "$&`n  enabled = true"
 }
 else
 {
-    # Create a config file from the example
-    $configContent = Get-Content "$( $installDir )\rport.example.conf" -Raw
-    Write-Output "* Creating new configuration file $( $configFile )."
-    # Put variables into the config
-    $logFile = "$( $installDir )\rport.log"
-    $configContent = $configContent -replace 'server = .*', "server = `"$( $connect_url )`""
-    $configContent = $configContent -replace '.*auth = .*', "auth = `"$( $client_id ):$( $password )`""
-    $configContent = $configContent -replace '#id = .*', "id = `"$( (Get-CimInstance -Class Win32_ComputerSystemProduct).UUID )`""
-    $configContent = $configContent -replace '#fingerprint = .*', "fingerprint = `"$( $fingerprint )`""
-    $configContent = $configContent -replace 'log_file = .*', "log_file = '$( $logFile )'"
-    $configContent = $configContent -replace '#name = .*', "name = `"$( $env:computername )`""
-    $configContent = $configContent -replace '#data_dir = .*', "data_dir = '$( $dataDir )'"
-    if ($x)
-    {
-        # Enable commands and scripts
-        $configContent = $configContent -replace '#allow = .*', "allow = ['.*']"
-        $configContent = $configContent -replace '#deny = .*', "deny = []"
-        $configContent = $configContent -replace '\[remote-scripts\]', "$&`n  enabled = true"
-    }
-    else
-    {
-        # Disbale commands
-        $configContent = Set-TomlVar -FileContent $configContent -Block "remote-commands" -Key "enabled" -Value "false"
-    }
-    if (-not$r)
-    {
-        # Disable file reception
-        $configContent = Set-TomlVar -FileContent $configContent -Block "file-reception" -Key "enabled" -value "false"
-    }
-    $tags = @()
-    # Get the location of the server
-    $geoUrl = "http://ip-api.com/json/?fields=status,country,city"
-    $geoData = Invoke-RestMethod -Uri $geoUrl
-    if ("success" -eq $geoData.status)
-    {
-        # Add geo data as tags
-        $tags += $geoData.country
-        $tags += $geoData.city
-    }
-    if ($g)
-    {
-        # Add a custom tag
-        $tags += $g
-    }
-    if ($tags.Length -gt 0)
-    {
-        $tagsLine = "tags = [`""
-        $tagsLine += $tags -join "`",`""
-        $tagsLine += "`"]"
-        $configContent = $configContent -replace '#tags = .*',$tagsLine
-    }
-
-    # Write the config to a file
-    $Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
-    [IO.File]::WriteAllLines($configFile, $configContent, $Utf8NoBomEncoding)
+    # Disbale commands
+    $configContent = Set-TomlVar -ConfigContent $configContent -Block "remote-commands" -Key "enabled" -Value "false"
 }
-Push-InterpretersToConfig
-Enable-Network-Monitoring
+# Enable/Disable file reception
+$configContent = Enable-FileReception -ConfigContent $configContent -Switch $r
+$tags = @()
+# Get the location of the server
+$geoUrl = "http://ip-api.com/json/?fields=status,country,city"
+$geoData = Invoke-RestMethod -Uri $geoUrl
+if ("success" -eq $geoData.status)
+{
+    # Add geo data as tags
+    $tags += $geoData.country
+    $tags += $geoData.city
+}
+if ($g)
+{
+    # Add a custom tag
+    $tags += $g
+}
+if ($tags.Length -gt 0)
+{
+    $tagsLine = "tags = [`""
+    $tagsLine += $tags -join "`",`""
+    $tagsLine += "`"]"
+    $configContent = $configContent -replace '#tags = .*', $tagsLine
+}
+$configContent = Enable-Network-Monitoring -ConfigContent $configContent
+$configContent = Enable-InterpreterAlias -ConfigContent $configContent
 
-if($d)
+# Finally, write the config to a file
+$Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
+[IO.File]::WriteAllLines($configFile, $configContent, $Utf8NoBomEncoding)
+
+if ($d)
 {
     # Exit here
-    Write-Output "Configuraion written to $($configFile)."
+    Write-Output "Configuration written to $( $configFile )."
     Write-Output "==================================================================================="
-    Write-Output $configContent
+    Get-Content $configFile -Raw
     Write-Output "==================================================================================="
     Write-Output "Exit! Service not installed."
     exit 0
@@ -229,7 +230,7 @@ Try the following to investigate:
 
 3) READ THE DOCS on https://kb.rport.io
 
-4) Request support on https://kb.rport.io/need-help/request-support
+4) Request support on https://github.com/cloudradar-monitoring/rport-pairing/discussions/categories/help-needed
 "
 }
 
