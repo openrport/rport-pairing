@@ -37,7 +37,7 @@ sudo sh rport-installer.sh -x -s
 
 # Verify the client has connected to the local rportd
 echo "Verifying client is connected to server"
-grep "client-listener.*Open.*$(hostname)" /tmp/rportd.log
+grep "client-listener.*Open" /tmp/rportd.log
 
 # Execute the update script
 echo "Executing the update script now"
