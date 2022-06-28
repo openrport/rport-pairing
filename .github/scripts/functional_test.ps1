@@ -44,7 +44,7 @@ Write-output "Executing the installer now"
 
 # Verify the client has connected to the local rportd
 Write-Output "Verifying client is connected to server"
-Get-Content C:\rport\rportd.log|Select-String -Pattern "client-listener.*Open"
+Get-Content C:\rport\rportd.log|Select-String -Pattern "client-listener.*open"
 
 # Execute the update script
 Write-Output "Executing the update script now"
