@@ -77,7 +77,7 @@ func TestInstallerHandler_ServeHTTP(t *testing.T) {
 			installerHandler.ServeHTTP(recorder, request)
 			assert.Equal(t, tc.er.httpStatus, recorder.Result().StatusCode)
 			assert.Contains(t, recorder.Body.String(), tc.er.keyword, fmt.Sprintf("Expexted key word '%s' missing.", tc.er.keyword))
-			assert.Contains(t, recorder.Body.String(), tc.er.variable, "Not found in body:\n"+recorder.Body.String())
+			assert.Contains(t, recorder.Body.String(), tc.er.variable, "Variable not found in body:\n"+recorder.Body.String())
 			if recorder.Result().StatusCode == 200 {
 				assert.Contains(t, recorder.Header().Get("Content-Disposition"), "attachment; filename=\"rport-installer", "Content-Disposition Header wrong or missing")
 			}

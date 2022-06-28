@@ -24,9 +24,9 @@ type Response struct {
 
 func rplForBash(in string) (out string) {
 	rpl := map[string]string{
+		"\\": "\\\\",
 		"\"": "\\\"",
 		"$":  "\\$",
-		"\\": "\\\\",
 	}
 	for s, r := range rpl {
 		in = strings.ReplaceAll(in, s, r)
@@ -45,9 +45,9 @@ func SanitizeForBash(in Deposit) (out Deposit) {
 
 func rplForPowerShell(in string) (out string) {
 	rpl := map[string]string{
+		"`":  "``",
 		"\"": "`\"",
 		"$":  "`$",
-		"`":  "``",
 	}
 	for s, r := range rpl {
 		in = strings.ReplaceAll(in, s, r)
