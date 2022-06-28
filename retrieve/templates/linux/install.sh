@@ -178,7 +178,7 @@ prepare_config() {
   fi
 
   # Set the hostname.
-  if grep -Eq "^use_hostname = true" "$CONFIG_FILE";then
+  if grep -Eq "\s+use_hostname = true" "$CONFIG_FILE";then
     # For versions >= 0.5.9
     # Just insert an example.
     sed -i "s/#name = .*/#name = \"$(get_hostname)\"/g" "$CONFIG_FILE"
@@ -189,12 +189,11 @@ prepare_config() {
   fi
 
   # Set the machine_id
-  if grep -Eq "^use_system_id = true" "$CONFIG_FILE" && [ -e /etc/machine-id ];then
+  if grep -Eq "\s+use_system_id = true" "$CONFIG_FILE" && [ -e /etc/machine-id ];then
     # Versions >= 0.5.9 read it dynamically
     echo "Using /etc/machine-id as rport client id"
   else
     # Older versions need a hard coded id
-    sed -i "s/^use_hostname = true/use_hostname = false/g" "$CONFIG_FILE"
     sed -i "s/#id = .*/id = \"$(machine_id)\"/g" "$CONFIG_FILE"
   fi
 
