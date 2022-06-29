@@ -21,10 +21,10 @@ Try the following to investigate:
 "
 }
 
-$LogFile = $false
+$InstallerLogFile = $false
 if (-not(Get-Command Write-Information -erroraction silentlycontinue))
 {
-    $LogFile = (Get-Location).path + "\rport-script.log"
+    $InstallerLogFile = (Get-Location).path + "\rport-installer.log"
     if (Test-Path $LogFile)
     {
         Remove-Item $LogFile
@@ -44,11 +44,11 @@ if (-not(Get-Command Write-Information -erroraction silentlycontinue))
 
 function Get-Log
 {
-    if ($LogFile)
+    if (Test-Path $InstallerLogFile)
     {
         Write-Output ": The following information has been logged:"
-        Get-Content $LogFile
-        Remove-Item $LogFile -Force
+        Get-Content $InstallerLogFile
+        Remove-Item $InstallerLogFile -Force
     }
 }
 
