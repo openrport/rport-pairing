@@ -21,6 +21,37 @@ Try the following to investigate:
 "
 }
 
+$LogFile = $false
+if (-not(Get-Command Write-Information -erroraction silentlycontinue))
+{
+    $LogFile = (Get-Location).path + "\rport-script.log"
+    if (Test-Path $LogFile)
+    {
+        Remove-Item $LogFile
+    }
+    Write-Output "# Compatibility mode for PowerShell $( $PSVersionTable.PSVersion ) activated"
+    Write-Output "# All information stream messages are redirected to $( $LogFile )"
+    function Write-Information
+    {
+        [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidOverwritingBuiltInCmdlets', '', Justification = 'Applies only to old PS Versions')]
+        Param(
+            [parameter(Mandatory = $false)]
+            [String] $MessageData = ""
+        )
+        Add-Content -Path $LogFile -Value $MessageData
+    }
+}
+
+function Get-Log
+{
+    if ($LogFile)
+    {
+        Write-Output ": The following information has been logged:"
+        Get-Content $LogFile
+        Remove-Item $LogFile -Force
+    }
+}
+
 # Extract a ZIP file
 function Expand-Zip
 {
@@ -73,7 +104,8 @@ function Find-Interpreter
     .SYNOPSIS
         Find common script interpreters installed on the system
     #>
-    $interpreters = @{ }
+    $interpreters = @{
+    }
     if (Test-Path -Path 'C:\Program Files\PowerShell\7\pwsh.exe')
     {
         $interpreters.add('powershell7', 'C:\Program Files\PowerShell\7\pwsh.exe')
@@ -309,7 +341,10 @@ function Set-TomlVar
     }
     if (-not$ok)
     {
-        Write-Error "Key $key not found in config content"
+        $e = @()
+        $e += ": Key '$( $Key )' not found in config section [$( $Block )]."
+        $e += ": Please add manually '$( $Key ) = `"$( $Value )`"'"
+        Write-Error ($e -join "`n")
         return
     }
     if ( $PSCmdlet.ShouldProcess($ConfigContent))
@@ -335,7 +370,7 @@ function Add-Netcard
     if ($Interface.Length -gt 1)
     {
         Write-Information ""
-        Write-Information "-----------------------::   CAUTION  ::-----------------------"
+        Write-Information "-----------------------::CAUTION::-----------------------"
         Write-Information ": You have more than one connected $( $InterfaceType ) card."
         Write-Information ": Just the first one will be activated for the monitoring."
         Write-Information ": Review the configuration file and adjust to your needs manually once the installation has finished."
@@ -350,8 +385,16 @@ function Add-Netcard
         $ConfigContent
         return
     }
-    $ConfigContent = Set-TomlVar -ConfigContent $ConfigContent -Block "monitoring" -Key $InterfaceType -Value "['$InterfaceAlias','$linkSpeed']"
-    Write-Information "* Monitoring for $InterfaceType '$InterfaceAlias' activated."
+    try
+    {
+        $ConfigContent = Set-TomlVar -ConfigContent $ConfigContent -Block "monitoring" -Key $InterfaceType -Value "['$InterfaceAlias', '$linkSpeed']"
+        Write-Information "* Monitoring for $InterfaceType '$InterfaceAlias' activated."
+    }
+    catch
+    {
+        Write-Information ": Monitoring for $InterfaceType '$InterfaceAlias' NOT activated."
+        Write-Information $_
+    }
     $ConfigContent
 }
 
@@ -367,10 +410,18 @@ function Select-EnabledNetCard
         $filtered = @()
         foreach ($NetAdapter in $NetAdapters)
         {
-            if ("Up" -eq (Get-NetAdapter -Name $NetAdapter.InterfaceAlias).Status)
+            try
             {
-                $filtered += $NetAdapter
+                if ("Up" -eq (Get-NetAdapter -Name $NetAdapter.InterfaceAlias).Status)
+                {
+                    $filtered += $NetAdapter
+                }
             }
+            catch
+            {
+                Write-Information ": Failed to get status of $( $NetAdapter.InterfaceAlias ). Net Adapter ignored."
+            }
+
         }
         $filtered
         return
@@ -395,8 +446,18 @@ function Enable-Network-Monitoring
         $ConfigContent
         return
     }
-    $netLan = (Get-NetIPAddress|Where-Object IPAddress -Match "^(10|192.168|172.16)"|Select-EnabledNetCard)
-    $netWan = (Get-NetIPAddress|Where-Object AddressFamily -eq "IPv4"|Where-Object IPAddress -NotMatch "^(10|192.168|172.16|127.)"|Select-EnabledNetCard)
+    try
+    {
+        $netLan = (Get-NetIPAddress|Where-Object IPAddress -Match "^(10|192.168|172.16)"|Select-EnabledNetCard)
+        $netWan = (Get-NetIPAddress|Where-Object AddressFamily -eq "IPv4"|Where-Object IPAddress -NotMatch "^(10|192.168|172.16|127.|169.254.)"|Select-EnabledNetCard)
+    }
+    catch
+    {
+        Write-Information ": Getting list of Network adapters with 'Get-NetIPAddress' failed. Notwork monitoring not activated."
+        $ConfigContent
+        return
+    }
+
     if (-Not$netLan -and -Not$netWan)
     {
         Write-Information "* No Lan cards detected. Check manually with 'Get-NetAdapter'"

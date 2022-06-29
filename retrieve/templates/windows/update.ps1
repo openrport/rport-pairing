@@ -284,14 +284,32 @@ $Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
 [IO.File]::WriteAllLines($configFile, $configContent, $Utf8NoBomEncoding)
 
 # Create a scheduled task to restart RPort.
-Invoke-Later -Description "Restart RPort" -Delay 10 -ScriptBlock {
+try
+{
+    Invoke-Later -Description "Restart RPort" -Delay 10 -ScriptBlock {
+        Stop-Service rport
+        Copy-Item 'C:\Windows\Temp\rport.exe' 'C:\Program Files\rport\rport.new'
+        Move-Item 'C:\Program Files\rport\rport.new'  'C:\Program Files\rport\rport.exe' -Force
+        Remove-Item 'C:\windows\temp\rport.exe' -Force
+        Start-Service rport
+    }
+}
+catch
+{
+    Copy-Item 'C:\Windows\Temp\rport.exe' 'C:\Program Files\rport\rport.new.exe'
+    Write-Output ": Scheduling the restart of rport failed"
+    Write-Output ": Try the following on your PowerShell to activate the new version."
+    Write-Output "PS >
     Stop-Service rport
-    Copy-Item 'C:\Windows\Temp\rport.exe' 'C:\Program Files\rport\rport.new'
-    Move-Item 'C:\Program Files\rport\rport.new'  'C:\Program Files\rport\rport.exe' -Force
-    Remove-Item 'C:\windows\temp\rport.exe' -Force
+    Move-Item 'C:\Program Files\rport\rport.new.exe'  'C:\Program Files\rport\rport.exe' -Force
     Start-Service rport
+
+    "
+    Write-Output ": CAUTION: **Don't do the above while connected over RPort!**"
 }
 Set-Location $myLocation
+
+Get-Log
 
 Write-Output "
 #  Update of rport finished.

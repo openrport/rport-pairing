@@ -186,6 +186,7 @@ Remove-Item $downloadFile
 
 function Finish
 {
+    Get-Log
     Set-Location $myLocation
     Write-Output "#
 #
@@ -216,6 +217,7 @@ Thanks for using
 
 function Fail
 {
+    Get-Log
     Write-Output "
 #
 # -------------!!   ERROR  !!-------------
