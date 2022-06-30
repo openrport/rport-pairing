@@ -13,7 +13,7 @@
 
 rport-pairing.conf
 # Dependency directories (remove the comment below to include it)
-# vendor/
+vendor/
 release.sh
 push_to_prod.sh
 rport.example.conf

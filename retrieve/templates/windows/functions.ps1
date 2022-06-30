@@ -128,16 +128,37 @@ function Enable-FileReception
         [Parameter(Mandatory)]
         [Boolean]$Switch
     )
+
     if ($Switch)
     {
-        $ConfigContent = Set-TomlVar -ConfigContent $ConfigContent "file-reception" -Key "enabled" -value "true"
-        Write-Information "* File reception has been enabled."
+        try
+        {
+            $ConfigContent = Set-TomlVar -ConfigContent $ConfigContent "file-reception" -Key "enabled" -value "true"
+            Write-Information "* File reception has been enabled."
+        }
+        catch
+        {
+            Write-Information ": Enabling file-reception failed."
+            Write-Information ": Check the settings of [file-reception] manually and change to your needs."
+        }
+
     }
     else
     {
-        $ConfigContent = Set-TomlVar -ConfigContent $ConfigContent "file-reception" -Key "enabled" -value "false"
-        Write-Information "* File reception has been disabled."
+        try
+        {
+            $ConfigContent = Set-TomlVar -ConfigContent $ConfigContent "file-reception" -Key "enabled" -value "false"
+            Write-Information "* File reception has been disabled."
+        }
+        catch
+        {
+            Write-Information ": Disabling file-reception failed."
+            Write-Information ": Check the settings of [file-reception] manually and change to your needs."
+        }
+
     }
+
+
     $ConfigContent
     return
 }
@@ -491,7 +512,7 @@ function Get-HostUUID
         Write-Information ": Falling back to a md5 hash of the computer name."
         $hash = [System.Security.Cryptography.HashAlgorithm]::Create("md5").ComputeHash(
                 [System.Text.Encoding]::UTF8.GetBytes($( $env:computername )))
-        [System.BitConverter]::ToString($hash).Replace("-","")
+        [System.BitConverter]::ToString($hash).Replace("-", "")
         return
     }
 }
