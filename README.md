@@ -93,7 +93,7 @@ mv rport-pairing.service /etc/systemd/system/
 rm rport-pairing*Linux*.tar.gz
 ````
 
-Edit the config `/etc/rport/rport-pairing.conf` and start the service with `systemctl start rport-pairing`.
+Edit the config `/etc/rport/rport-pairing.conf` and start the service with `systemctl start rport-pairing` and enable the auto-start on boot with `systemctl enable rport-pairing`.
 
 It's strongly recommended running the pairing service behind a reverse proxy with encryption. 
 Likely you want to run the RPort server and the pairing service on the same host with name based virtual hosts (SNI).
