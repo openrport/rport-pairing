@@ -64,8 +64,13 @@ else
 {
     $url = "https://downloads.rport.io/rport/$( $release )/?arch=Windows_x86_64&gt=$currentVersion"
 }
-$temp = 'C:\windows\temp\'
-$downloadFile = $temp + "rport_Windows_x86_64.zip"
+$temp = 'C:\windows\temp\rport-update\'
+if(Test-Path $temp)
+{
+    Remove-Item $temp -Recurse -Force
+}
+New-Item -ItemType Directory -Force -Path $temp|Out-Null
+$downloadFile = "C:\windows\temp\rport_Windows_x86_64.zip"
 
 Write-Output ""
 # Download the package
@@ -92,6 +97,22 @@ If ((Get-Item $downloadFile).length -eq 0)
     exit 0
 }
 Write-Output "* Download finished and stored to $( $downloadFile ) ."
+
+# Extract the ZIP file
+Write-Output "* Extracting Rport.exe to $temp"
+if (Test-Path $( $temp + 'rport.example.conf' ))
+{
+    Remove-Item $( $temp + 'rport.example.conf' ) -Force
+}
+if (Test-Path $( $temp + 'rport.exe' ))
+{
+    Remove-Item $( $temp + 'rport.exe' ) -Force
+}
+Expand-Zip -Path $downloadFile -DestinationPath $temp
+Remove-Item $downloadFile
+Remove-Item $( $temp + 'rport.example.conf' )
+$targetVersion = (& "$( $temp )/rport.exe" --version) -replace "version ", ""
+Write-Output "* New version will be $targetVersion."
 
 function ExtendConfig
 {
@@ -141,22 +162,6 @@ else
     }
     ExtendConfig
 }
-
-# Extract the ZIP file
-Write-Output "* Extracting Rport.exe to $temp"
-if (Test-Path $( $temp + 'rport.example.conf' ))
-{
-    Remove-Item $( $temp + 'rport.example.conf' ) -Force
-}
-if (Test-Path $( $temp + 'rport.exe' ))
-{
-    Remove-Item $( $temp + 'rport.exe' ) -Force
-}
-Expand-Zip -Path $downloadFile -DestinationPath $temp
-Remove-Item $downloadFile
-Remove-Item $( $temp + 'rport.example.conf' )
-$targetVersion = (& "$( $temp )/rport.exe" --version) -replace "version ", ""
-Write-Output "* New version will be $targetVersion."
 
 # Add file reception to the config file
 function Add-FileRecption
@@ -288,15 +293,15 @@ try
 {
     Invoke-Later -Description "Restart RPort" -Delay 10 -ScriptBlock {
         Stop-Service rport
-        Copy-Item 'C:\Windows\Temp\rport.exe' 'C:\Program Files\rport\rport.new'
+        Copy-Item 'C:\windows\temp\rport-update\rport.exe' 'C:\Program Files\rport\rport.new'
         Move-Item 'C:\Program Files\rport\rport.new'  'C:\Program Files\rport\rport.exe' -Force
-        Remove-Item 'C:\windows\temp\rport.exe' -Force
+        Remove-Item 'C:\windows\temp\rport-update' -Force -Recurse
         Start-Service rport
     }
 }
 catch
 {
-    Copy-Item 'C:\Windows\Temp\rport.exe' 'C:\Program Files\rport\rport.new.exe'
+    Copy-Item 'C:\windows\temp\rport-update\rport.exe' 'C:\Program Files\rport\rport.new.exe'
     Write-Output ": Scheduling the restart of rport failed"
     Write-Output ": Try the following on your PowerShell to activate the new version."
     Write-Output "PS >

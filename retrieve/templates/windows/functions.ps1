@@ -25,12 +25,12 @@ $InstallerLogFile = $false
 if (-not(Get-Command Write-Information -erroraction silentlycontinue))
 {
     $InstallerLogFile = (Get-Location).path + "\rport-installer.log"
-    if (Test-Path $LogFile)
+    if (Test-Path $InstallerLogFile)
     {
-        Remove-Item $LogFile
+        Remove-Item $InstallerLogFile
     }
     Write-Output "# Compatibility mode for PowerShell $( $PSVersionTable.PSVersion ) activated"
-    Write-Output "# All information stream messages are redirected to $( $LogFile )"
+    Write-Output "# All information stream messages are redirected to $( $InstallerLogFile )"
     function Write-Information
     {
         [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidOverwritingBuiltInCmdlets', '', Justification = 'Applies only to old PS Versions')]
@@ -38,7 +38,7 @@ if (-not(Get-Command Write-Information -erroraction silentlycontinue))
             [parameter(Mandatory = $false)]
             [String] $MessageData = ""
         )
-        Add-Content -Path $LogFile -Value $MessageData
+        Add-Content -Path $InstallerLogFile -Value $MessageData
     }
 }
 
@@ -46,7 +46,8 @@ function Get-Log
 {
     if (Test-Path $InstallerLogFile)
     {
-        Write-Output ": The following information has been logged:"
+        Write-Output ""
+        Write-Output "= The following information has been logged:"
         Get-Content $InstallerLogFile
         Remove-Item $InstallerLogFile -Force
     }
@@ -68,6 +69,7 @@ function Expand-Zip
     else
     {
         # Use a fallback for old powershells < 5
+        Remove-Item (-join ($DestinationPath, "\*")) -force -Recurse
         Add-Type -AssemblyName System.IO.Compression.FileSystem
         [System.IO.Compression.ZipFile]::ExtractToDirectory($Path, $DestinationPath)
     }
@@ -224,9 +226,10 @@ function Install-Tacoscript
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     Invoke-WebRequest -Uri $url -OutFile $file -UseBasicParsing
     Write-Output "* Tacoscript dowloaded to $( $file )"
-    New-Item -ItemType Directory -Force -Path "$( $tacoDir )\bin"|Out-Null
+    New-Item -ItemType Directory -Force -Path "$( $tacoDir )"|Out-Null
     Expand-Zip -Path $file -DestinationPath $tacoDir
-    Move-Item "$( $tacoDir )\tacoscript.exe" "$( $tacoDir )\bin"
+    New-Item -ItemType Directory -Force -Path "$( $tacoDir )\bin"|Out-Null
+    Move-Item "$( $tacoDir )\tacoscript.exe" "$( $tacoDir )\bin\"
     $ENV:PATH = "$ENV:PATH;$( $tacoDir )\bin"
 
     [Environment]::SetEnvironmentVariable(
@@ -442,7 +445,7 @@ function Enable-Network-Monitoring
     }
     if ($ConfigContent -match "^\s*net_[lw]an")
     {
-        Write-Information "* Network Monitoring already enabled"
+        Write-Information "* Network Monitoring already enabled."
         $ConfigContent
         return
     }
@@ -473,4 +476,22 @@ function Enable-Network-Monitoring
         $ConfigContent = Add-Netcard -ConfigContent $ConfigContent -Interface $netWan -InterfaceType 'net_wan'
     }
     $ConfigContent
+}
+
+function Get-HostUUID
+{
+    try
+    {
+        (Get-CimInstance -Class Win32_ComputerSystemProduct).UUID
+        return
+    }
+    catch
+    {
+        Write-Information ": Reading system UUID with 'Get-CimInstance -Class Win32_ComputerSystemProduct' failed."
+        Write-Information ": Falling back to a md5 hash of the computer name."
+        $hash = [System.Security.Cryptography.HashAlgorithm]::Create("md5").ComputeHash(
+                [System.Text.Encoding]::UTF8.GetBytes($( $env:computername )))
+        [System.BitConverter]::ToString($hash).Replace("-","")
+        return
+    }
 }

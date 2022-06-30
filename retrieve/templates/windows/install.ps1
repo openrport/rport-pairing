@@ -12,7 +12,7 @@ $downloadFile = "C:\Windows\temp\rport_$( $release )_Windows_x86_64.zip"
 $installDir = "$( $Env:Programfiles )\rport"
 $dataDir = "$( $installDir )\data"
 
-# Check if RPor is already installed
+# Check if RPort is already installed
 if (Test-Path $installDir)
 {
     Write-Output "RPort is already installed."
@@ -79,11 +79,14 @@ Write-Output "* Creating new configuration file $( $configFile )."
 $logFile = "$( $installDir )\rport.log"
 $configContent = $configContent -replace 'server = .*', "server = `"$( $connect_url )`""
 $configContent = $configContent -replace '.*auth = .*', "  auth = `"$( $client_id ):$( $password )`""
-$configContent = $configContent -replace '#id = .*', "id = `"$( (Get-CimInstance -Class Win32_ComputerSystemProduct).UUID )`""
 $configContent = $configContent -replace '#fingerprint = .*', "fingerprint = `"$( $fingerprint )`""
 $configContent = $configContent -replace 'log_file = .*', "log_file = '$( $logFile )'"
-$configContent = $configContent -replace '#name = .*', "name = `"$( $env:computername )`""
 $configContent = $configContent -replace '#data_dir = .*', "data_dir = '$( $dataDir )'"
+# Set the system UUID
+# For the time beeing creating the ID from the PowerShell is more reliable
+$HostUUID = Get-HostUUID
+$configContent = $configContent -replace '#id = .*', "id = `"$( $HostUUID )`""
+$configContent = $configContent -replace 'use_system_id = true', 'use_system_id = false'
 if ($x)
 {
     # Enable commands and scripts
@@ -152,11 +155,6 @@ else
 Start-Service -Name rport
 Get-Service rport
 
-if ($i)
-{
-    Install-Tacoscript
-}
-
 # Create an uninstaller script for rport
 Set-Content -Path "$( $installDir )\uninstall.bat" -Value 'echo off
 echo off
@@ -177,8 +175,19 @@ rmdir /S /Q "%PROGRAMFILES%"\rport\
 echo Rport removed
 ping -n 2 127.0.0.1 > null
 '
-Write-Output ""
 Write-Output "* Uninstaller created in $( $installDir )\uninstall.bat."
+if ($i)
+{
+    try
+    {
+        Install-Tacoscript
+    }
+    catch
+    {
+        Write-Output ": Installation of Tacoscript failed"
+        Write-Output $_
+    }
+}
 # Clean Up
 Remove-Item $downloadFile
 
