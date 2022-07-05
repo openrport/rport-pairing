@@ -104,13 +104,21 @@ $configContent = Enable-FileReception -ConfigContent $configContent -Switch $r
 $tags = @()
 # Get the location of the server
 $geoUrl = "http://ip-api.com/json/?fields=status,country,city"
-$geoData = Invoke-RestMethod -Uri $geoUrl
-if ("success" -eq $geoData.status)
+try
 {
-    # Add geo data as tags
-    $tags += $geoData.country
-    $tags += $geoData.city
+    $geoData = Invoke-RestMethod -Uri $geoUrl -TimeoutSec 5
+    if ("success" -eq $geoData.status)
+    {
+        # Add geo data as tags
+        $tags += $geoData.country
+        $tags += $geoData.city
+    }
 }
+catch
+{
+    Write-Output ": Fetching geodata failed. Skipping"
+}
+
 if ($g)
 {
     # Add a custom tag
