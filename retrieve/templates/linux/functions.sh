@@ -70,7 +70,7 @@ uninstall() {
 print_distro() {
   if [ -e /etc/os-release ]; then
     # shellcheck source=/dev/null
-    . /etc/os-release
+    . /etc/os-release 2>/dev/null||true
     echo "Detected Linux Distribution: ${PRETTY_NAME}"
   fi
 }
