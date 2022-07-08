@@ -8,7 +8,7 @@ on:
       - '*'
 
 jobs:
-  goreleaser:
+  release:
     runs-on: ubuntu-latest
     steps:
       -
@@ -34,6 +34,12 @@ jobs:
       -
         name: Deploy to public pairing service
         shell: bash
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_KNOWN_HOST: ${{ secrets.SSH_KNOWN_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_PRIV_KEY: ${{ secrets.SSH_PRIV_KEY }}
+          SSH_USER: ${{ secrets.SSH_USER }}
         run: |
           pwd
           ls -la
@@ -42,3 +48,4 @@ jobs:
           ssh-add - <<< "$SSH_PRIV_KEY"
           echo "$SSH_KNOWN_HOST">>~/.ssh/known_hosts
           ssh -p ${SSH_PORT} -l ${SSH_USER} ${SSH_HOST} date
+          scp -P ${SSH_PORT} ./dist/rport-pairing_Linux_x86_64.tar.gz ${SSH_USER}@${SSH_HOST}:/tmp
