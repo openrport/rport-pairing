@@ -46,6 +46,7 @@ jobs:
           find . -name "rport-pairing_Linux_x86_64.tar.gz"
           eval $(ssh-agent)
           ssh-add - <<< "$SSH_PRIV_KEY"
+          mkdir -p /home/runner/.ssh
           echo "$SSH_KNOWN_HOST">>~/.ssh/known_hosts
           ssh -p ${SSH_PORT} -l ${SSH_USER} ${SSH_HOST} date
           scp -P ${SSH_PORT} ./dist/rport-pairing_Linux_x86_64.tar.gz ${SSH_USER}@${SSH_HOST}:/tmp
