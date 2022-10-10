@@ -99,7 +99,7 @@ func (dh *Handler) store(deposit *Deposit) (*Response, error) {
 		PairingCode: id,
 	}
 	response.Expires = time.Now().UTC().Add(ttl)
-	response.Installers.Linux = fmt.Sprintf(`curl -JO %s/%s
+	response.Installers.Linux = fmt.Sprintf(`curl %s/%s > rport-installer.sh
 sudo sh rport-installer.sh`, dh.ServerUrl, id)
 	response.Installers.Windows = fmt.Sprintf(`[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $url="%s/%s"
