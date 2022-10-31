@@ -389,7 +389,6 @@ Options:
 -l  Install with SELinux enabled.
 -g <TAG> Add an extra tag to the client.
 -d Do not use /etc/machine-id to identify this machine. A random UUID will be used instead.
--p Use the IP Address instead of the FQDN of the rport server.
 
 Learn more https://kb.rport.io/connecting-clients#advanced-pairing-options
 EOF
@@ -476,9 +475,8 @@ INSTALL_TACO=0
 SELINUX_FORCE=0
 ENABLE_FILEREC=0
 ENABLE_FILEREC_SUDO=0
-USER_SERVER_IP=0
 TAGS=""
-while getopts 'hvfcsuxstilrba:g:' opt; do
+while getopts 'hvfcsuxstildrba:g:' opt; do
   case "${opt}" in
 
   h)
@@ -502,7 +500,6 @@ while getopts 'hvfcsuxstilrba:g:' opt; do
   a) USER=${OPTARG} ;;
   g) TAGS=${OPTARG} ;;
   d) MACHINE_ID=gen_uuid ;;
-  p) USER_SERVER_IP=1;;
 
   \?)
     echo "Option does not exist."

@@ -518,7 +518,8 @@ function Get-HostUUID
 }
 
 # Set the start type of the service
-function Set-ServiceStartup
+function Optimize-ServiceStartup
 {
+    param()
     & sc.exe config rport start= delayed-auto
 }

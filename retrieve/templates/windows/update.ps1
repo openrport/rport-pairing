@@ -327,7 +327,7 @@ $Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
 [IO.File]::WriteAllLines($configFile, $configContent, $Utf8NoBomEncoding)
 
 # Set the service startup
-Set-ServiceStartup
+Optimize-ServiceStartup
 
 # Create a scheduled task to restart RPort.
 try

@@ -121,7 +121,6 @@ curl http://localhost:9090/0000000 -o rport-install.sh
 shellcheck rport-install.sh
 curl http://localhost:9090/update -o rport-update.sh
 shellcheck rport-update.sh
-pkill -f "rport-pairing.* -c rport-pairing.conf.example"
 ```
 Shellcheck must terminate with exit code 0.
 
@@ -132,6 +131,9 @@ Shellcheck must terminate with exit code 0.
 iwr "http://localhost:9090/0000000" -OutFile rport-install.ps1
 Import-Module -Name PSScriptAnalyzer
 Invoke-ScriptAnalyzer -Path rport-install.ps1
+iwr "http://localhost:9090/update" -OutFile rport-update.ps1
+Import-Module -Name PSScriptAnalyzer
+Invoke-ScriptAnalyzer -Path rport-update.ps1
 ```
 
 If you haven't installed [PSScriptAnalyzer](https://github.com/PowerShell/PSScriptAnalyzer) open a PowerShell and install it.
