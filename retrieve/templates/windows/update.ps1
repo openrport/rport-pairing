@@ -65,7 +65,7 @@ else
     $url = "https://downloads.rport.io/rport/$( $release )/?arch=Windows_x86_64&gt=$currentVersion"
 }
 $temp = 'C:\windows\temp\rport-update\'
-if(Test-Path $temp)
+if (Test-Path $temp)
 {
     Remove-Item $temp -Recurse -Force
 }
@@ -238,6 +238,42 @@ function Add-Monitoring
   #net_wan = ['', '1000']"
 }
 
+function Add-WatchdogIntegration
+{
+    <#
+    .SYNOPSIS
+        Push watchdog integration to the rport.conf
+    #>
+    [OutputType([Object[]])]
+    param (
+        [Parameter(Mandatory)]
+        [Object[]]$ConfigContent
+    )
+
+    if ($ConfigContent -match "watchdog_integration")
+    {
+        Write-Information "* Watchdog Integration already present in configuration file."
+        return $ConfigContent
+    }
+
+    if ([System.Version]$targetVersion -lt [System.Version]"0.8.8")
+    {
+        Write-Information "* Version $( $targetVersion ) does not support watchdog integration"
+        return $ConfigContent
+    }
+
+    $watchdogSnippet = "
+  ## Write a state file to {data_dir}/state.json that can be evaluated by external watchdog implementations.
+  ## On Linux this also enables the systemd watchdog integration by using the systemd notify socket.
+  ## Requires max_retry_count = -1 and keep_alive > 0
+  ## Read more https://oss.rport.io/advanced/watchdog-integration/
+  ## Disabled by default.
+  #watchdog_integration = false
+"
+    $ConfigContent -replace "## Optionally set the 'Host' header","$($watchdogSnippet)`n`n  $&"
+    Write-Information "* watchdog integration inserted"
+}
+
 function Invoke-Later
 {
     Param
@@ -284,9 +320,14 @@ $configContent = Enable-InterpreterAlias -ConfigContent $configContent
 $configContent = Enable-Network-Monitoring -ConfigContent $configContent
 # Enable/Disable file reception
 $configContent = Enable-FileReception -ConfigContent $configContent -Switch $r
+# Insert watchdog integration
+$configContent = Add-WatchdogIntegration -ConfigContent $configContent
 # Finally, write the config to a file
 $Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
 [IO.File]::WriteAllLines($configFile, $configContent, $Utf8NoBomEncoding)
+
+# Set the service startup
+Set-ServiceStartup
 
 # Create a scheduled task to restart RPort.
 try

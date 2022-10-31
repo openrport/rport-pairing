@@ -46,10 +46,15 @@
 #Requires -RunAsAdministrator
 # Definition of command line parameters
 Param(
-    [switch]$x, # Enable remote commands yes/no
+    [Alias("EnableCommands")][switch]$x, # Enable remote commands yes/no
     [switch]$t, # Use unstable version yes/no
     [switch]$i, # Install tacoscript
     [switch]$r, # Enable file reception
     [string]$g, # Add a tag
     [switch]$d # Exit after writing the config
 )
+if ($env:PROCESSOR_ARCHITECTURE -ne "AMD64")
+{
+    Write-Output "Only 64bit Windows on x86_64 supported. Sorry."
+    Exit 1
+}

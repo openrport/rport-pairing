@@ -23,8 +23,8 @@ clean_up() {
 #   DESCRIPTION:  Check if the RPort server is reachable or abort.
 #----------------------------------------------------------------------------------------------------------------------
 test_connection() {
-  CONN_TEST=$(curl -vIs -m5 "${CONNECT_URL}" 2>&1||true)
-  if echo "${CONN_TEST}"|grep -q "Connected to";then
+  CONN_TEST=$(curl -vIs -m5 "${CONNECT_URL}" 2>&1 || true)
+  if echo "${CONN_TEST}" | grep -q "Connected to"; then
     confirm "${CONNECT_URL} is reachable. All good."
   else
     echo "$CONN_TEST"
@@ -71,7 +71,7 @@ install_bin() {
   fi
   mv "${TMP_FOLDER}/${1}" "${EXEC_BIN}"
   confirm "${1} installed to ${EXEC_BIN}"
-  TARGET_VERSION=$(${EXEC_BIN} --version |awk '{print $2}')
+  TARGET_VERSION=$(${EXEC_BIN} --version | awk '{print $2}')
   confirm "RPort $TARGET_VERSION installed to $EXEC_BIN"
 }
 
@@ -143,7 +143,7 @@ create_systemd_service() {
 #----------------------------------------------------------------------------------------------------------------------
 create_openrc_service() {
   echo "Installing openrc service for rport"
-  cat << EOF >/etc/init.d/rport
+  cat <<EOF >/etc/init.d/rport
 #!/sbin/openrc-run
 command="/usr/local/bin/rport"
 command_args="-c /etc/rport/rport.conf"
@@ -178,7 +178,7 @@ prepare_config() {
   fi
 
   # Set the hostname.
-  if grep -Eq "\s+use_hostname = true" "$CONFIG_FILE";then
+  if grep -Eq "\s+use_hostname = true" "$CONFIG_FILE"; then
     # For versions >= 0.5.9
     # Just insert an example.
     sed -i "s/#name = .*/#name = \"$(get_hostname)\"/g" "$CONFIG_FILE"
@@ -189,24 +189,31 @@ prepare_config() {
   fi
 
   # Set the machine_id
-  if grep -Eq "\s+use_system_id = true" "$CONFIG_FILE" && [ -e /etc/machine-id ];then
-    # Versions >= 0.5.9 read it dynamically
-    echo "Using /etc/machine-id as rport client id"
+  if [ -n "$MACHINE_ID" ]; then
+    #User wants a hard-coded client id
+    sed -i "s/.*use_system_id = .*/  use_system_id = false/g" "$CONFIG_FILE"
+    sed -i "s/#id = .*/id = \"$MACHINE_ID\"/g" "$CONFIG_FILE"
+    echo "Using a random hard-coded client id not based on /etc/machine-id"
   else
-    # Older versions need a hard coded id
-    sed -i "s/#id = .*/id = \"$(machine_id)\"/g" "$CONFIG_FILE"
+    if grep -Eq "\s+use_system_id = true" "$CONFIG_FILE" && [ -e /etc/machine-id ]; then
+      # Versions >= 0.5.9 read it dynamically, nothing to do here
+      echo "Using /etc/machine-id as rport client id"
+    else
+      # Older versions need a hard-coded id in the rport.conf, preferably based on /etc/machine-id
+      sed -i "s/#id = .*/id = \"$(machine_id)\"/g" "$CONFIG_FILE"
+    fi
   fi
 
   if get_geodata; then
-    if [ -n "$TAGS" ];then
+    if [ -n "$TAGS" ]; then
       TAGS=$(printf "%s:%s:%s" "$TAGS" "$COUNTRY" "$CITY")
     else
       TAGS=$(printf "%s:%s" "$COUNTRY" "$CITY")
     fi
   fi
-  if [ -n "$TAGS" ];then
+  if [ -n "$TAGS" ]; then
     # shellcheck disable=SC2001
-    TAGS='["'$(echo "$TAGS"|sed s/":"/\",\"/g)'"]'
+    TAGS='["'$(echo "$TAGS" | sed s/":"/\",\"/g)'"]'
     sed -i "s/#tags = .*/tags = ${TAGS}/g" "$CONFIG_FILE"
   fi
 }
@@ -219,7 +226,7 @@ get_hostname() {
   hostname -f 2>/dev/null && return 0
   hostname 2>/dev/null && return 0
   cat /etc/hostname 2>/dev/null && return 0
-  LANG=en hostnamectl | grep hostname | grep -v 'n/a' |cut -d':' -f2 | tr -d ' '
+  LANG=en hostnamectl | grep hostname | grep -v 'n/a' | cut -d':' -f2 | tr -d ' '
 }
 
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
@@ -252,7 +259,7 @@ alt_machine_id() {
 install_client() {
   echo "Installing rport client"
   print_distro
-  if runs_with_selinux && [ "$SELINUX_FORCE" -ne 1 ];then
+  if runs_with_selinux && [ "$SELINUX_FORCE" -ne 1 ]; then
     echo ""
     echo "Your system has SELinux enabled. This installer will not create the needed policies."
     echo "Rport will not connect with out the right policies."
@@ -335,7 +342,7 @@ get_geodata() {
 #   DESCRIPTION:  Check the log file for proper operation or common errors
 #----------------------------------------------------------------------------------------------------------------------
 check_log() {
-  if [ -e "$LOG_FILE" ];then
+  if [ -e "$LOG_FILE" ]; then
     true
   else
     echo 2>&1 "[!] Logfile $LOG_FILE does not exist."
@@ -381,6 +388,8 @@ Options:
 -i  Install Tacoscript along with the RPort client.
 -l  Install with SELinux enabled.
 -g <TAG> Add an extra tag to the client.
+-d Do not use /etc/machine-id to identify this machine. A random UUID will be used instead.
+-p Use the IP Address instead of the FQDN of the rport server.
 
 Learn more https://kb.rport.io/connecting-clients#advanced-pairing-options
 EOF
@@ -467,11 +476,15 @@ INSTALL_TACO=0
 SELINUX_FORCE=0
 ENABLE_FILEREC=0
 ENABLE_FILEREC_SUDO=0
+USER_SERVER_IP=0
 TAGS=""
 while getopts 'hvfcsuxstilrba:g:' opt; do
   case "${opt}" in
 
-  h) help ; exit 0 ;;
+  h)
+    help
+    exit 0
+    ;;
   f) FORCE=1 ;;
   v)
     echo "$0 -- Version $VERSION"
@@ -482,12 +495,14 @@ while getopts 'hvfcsuxstilrba:g:' opt; do
   x) ENABLE_COMMANDS=1 ;;
   s) ENABLE_SUDO=1 ;;
   t) RELEASE=unstable ;;
-  i) INSTALL_TACO=1;;
-  l) SELINUX_FORCE=1;;
-  r) ENABLE_FILEREC=1;;
-  b) ENABLE_FILEREC_SUDO=1;;
+  i) INSTALL_TACO=1 ;;
+  l) SELINUX_FORCE=1 ;;
+  r) ENABLE_FILEREC=1 ;;
+  b) ENABLE_FILEREC_SUDO=1 ;;
   a) USER=${OPTARG} ;;
   g) TAGS=${OPTARG} ;;
+  d) MACHINE_ID=gen_uuid ;;
+  p) USER_SERVER_IP=1;;
 
   \?)
     echo "Option does not exist."

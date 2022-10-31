@@ -177,7 +177,7 @@ function Enable-InterpreterAlias
 
     if (-Not([System.Version]$targetVersion -ge [System.Version]"0.5.12"))
     {
-        Write-Output "* RPort version $targetVersion does not support Interpreter Aliases"
+        Write-Information "* RPort version $targetVersion does not support Interpreter Aliases"
         return
     }
     Write-Information "* Looking for script interpreters."
@@ -515,4 +515,10 @@ function Get-HostUUID
         [System.BitConverter]::ToString($hash).Replace("-", "")
         return
     }
+}
+
+# Set the start type of the service
+function Set-ServiceStartup
+{
+    & sc.exe config rport start= delayed-auto
 }

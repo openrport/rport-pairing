@@ -24,7 +24,7 @@ download_package() {
 #       RETURNS:
 #----------------------------------------------------------------------------------------------------------------------
 restart_rport() {
-  if [ -e /etc/init.d/rport ];then
+  if [ -e /etc/init.d/rport ]; then
     RESTART_CMD='/etc/init.d/rport restart'
   else
     RESTART_CMD='systemctl restart rport'
@@ -56,6 +56,7 @@ update() {
     enable_monitoring
     enable_lan_monitoring
     enable_file_reception
+    insert_watchdog
     mv -f /tmp/rport /usr/local/bin/rport
     restart_rport
   else
@@ -158,11 +159,11 @@ clean_up() {
 }
 
 enable_monitoring() {
-  if [ "$(version_to_int "$TARGET_VERSION")" -lt 5000 ];then
-        # Version does not handle monitoring yet.
-        return 0
+  if [ "$(version_to_int "$TARGET_VERSION")" -lt 5000 ]; then
+    # Version does not handle monitoring yet.
+    return 0
   fi
-  if grep -q "\[monitoring\]" "$CONFIG_FILE";then
+  if grep -q "\[monitoring\]" "$CONFIG_FILE"; then
     echo "Monitoring already enabled."
     return 0
   fi
@@ -210,7 +211,30 @@ enable_monitoring() {
   #net_lan = ['', 1000]
   #net_wan = ['', 1000]
 EOF
-echo "Monitoring enabled."
+  echo "Monitoring enabled."
+}
+
+insert_watchdog() {
+  if [ "$(version_to_int "$TARGET_VERSION")" -lt 8007 ]; then
+    # Version does not handle watchdog integration yet.
+    echo "Version $TARGET_VERSION does not support watchdog_integration yet"
+    return 0
+  fi
+  if grep -q watchdog_integration "$CONFIG_FILE"; then
+    # Watchdog integration already present
+    return 0
+  else
+    WATCHDOG_SNIPPET=$(sed ':a $!{N; ba}; s/\n/\\n/g'<<EOF
+  ## Write a state file to {data_dir}/state.json that can be evaluated by external watchdog implementations.
+  ## On Linux this also enables the systemd watchdog integration using the systemd notify socket.
+  ## Requires max_retry_count = -1 and keep_alive > 0
+  ## Read more https://oss.rport.io/advanced/watchdog-integration/
+  ## Disabled by default.
+  #watchdog_integration = false
+EOF
+)
+    sed -i "/max_retry_interval/a\\\n${WATCHDOG_SNIPPET}" "$CONFIG_FILE"
+  fi
 }
 
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
@@ -309,9 +333,9 @@ while getopts "hcuxdsmrbtv:" opt; do
   d) ENABLE_SCRIPTS=false ;;
   s) ENABLE_SUDO=1 ;;
   t) RELEASE=unstable ;;
-  m) ENABLE_TACOSCRIPT=0;;
-  r) ENABLE_FILEREC=1;;
-  b) ENABLE_FILEREC_SUDO=1;;
+  m) ENABLE_TACOSCRIPT=0 ;;
+  r) ENABLE_FILEREC=1 ;;
+  b) ENABLE_FILEREC_SUDO=1 ;;
 
   \?)
     echo "Option does not exist."

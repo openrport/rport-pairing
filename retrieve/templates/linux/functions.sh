@@ -70,7 +70,7 @@ uninstall() {
 print_distro() {
   if [ -e /etc/os-release ]; then
     # shellcheck source=/dev/null
-    . /etc/os-release 2>/dev/null||true
+    . /etc/os-release 2>/dev/null || true
     echo "Detected Linux Distribution: ${PRETTY_NAME}"
   fi
 }
@@ -346,23 +346,48 @@ toml_set() {
   BLOCK="$2"
   KEY="$3"
   VALUE="$4"
-  if [ -w "$TOML_FILE" ];then
+  if [ -w "$TOML_FILE" ]; then
     true
   else
-    2>&1 echo "$TOML_FILE does not exist or is not writable."
+    echo 2>&1 "$TOML_FILE does not exist or is not writable."
     return 1
   fi
-  if grep -q "\[$BLOCK\]" "$TOML_FILE";then
+  if grep -q "\[$BLOCK\]" "$TOML_FILE"; then
     true
   else
-    2>&1 echo "$TOML_FILE has no block [$BLOCK]"
+    echo 2>&1 "$TOML_FILE has no block [$BLOCK]"
     return 1
   fi
-  LINE=$(grep -n -A100 "\[$BLOCK\]" "$TOML_FILE"|grep "${KEY} = ")
-  if [ -z "$LINE" ];then
-    2>&1 echo "Key $KEY not found in block $BLOCK"
+  LINE=$(grep -n -A100 "\[$BLOCK\]" "$TOML_FILE" | grep "${KEY} = ")
+  if [ -z "$LINE" ]; then
+    echo 2>&1 "Key $KEY not found in block $BLOCK"
     return 1
   fi
-  LINE_NO=$(echo "$LINE"|cut -d'-' -f1)
+  LINE_NO=$(echo "$LINE" | cut -d'-' -f1)
   sed -i "${LINE_NO}s/.*/  ${KEY} = ${VALUE}/" "$TOML_FILE"
+}
+
+gen_uuid() {
+  if [ -e /proc/sys/kernel/random/uuid ]; then
+    cat /proc/sys/kernel/random/uuid
+    return 0
+  fi
+  if which uuidgen >/dev/null 2>&1; then
+    uuidgen
+    return 0
+  fi
+  if which dbus-uuidgen >/dev/null 2>&1; then
+    dbus-uuidgen
+    return 0
+  fi
+  # Use a internet-based fallback
+  curl -s https://www.uuidtools.com/api/generate/v4 | tr -d '"[]'
+}
+
+get_ip_from_fqdn() {
+  if which getent >/dev/null; then
+    getent hosts "$1" | awk '{ print $1 }'
+    return 0
+  fi
+  ping "$1" -c 1 -q 2>&1 | grep -Po "(\d{1,3}\.){3}\d{1,3}"
 }

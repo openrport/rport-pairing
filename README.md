@@ -139,4 +139,20 @@ If you haven't installed [PSScriptAnalyzer](https://github.com/PowerShell/PSScri
 Install-Module -Name PSScriptAnalyzer -Scope CurrentUser
 ```
 
+### Test your local version on remote systems
+#### On Linux
+Run the pairing service on your dev machine.
+```bash
+$ go run ./cmd/rport-pairing.go -c rport-pairing.conf.example
+2022/09/08 17:44:30 Server started on  127.0.0.1:9090
+```
 
+Use SSH port forwarding to make the web server available on a remote system. For example:
+```bash
+$ ssh 10.131.216.191 -l root -R 9090:127.0.0.1:9090
+```
+Now you can do the pairing or an update using:
+```bash
+curl http://localhost:9090/0000000 -o rport-installer.sh
+sudo sh rport-installer.sh
+```
