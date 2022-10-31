@@ -49,4 +49,7 @@ jobs:
           mkdir -p /home/runner/.ssh
           echo "$SSH_KNOWN_HOST">>~/.ssh/known_hosts
           scp -P ${SSH_PORT} ./dist/rport-pairing_Linux_x86_64.tar.gz ${SSH_USER}@${SSH_HOST}:/tmp
-          ssh -p ${SSH_PORT} -l ${SSH_USER} ${SSH_HOST} "sudo ~/.github/update-rport-pairing.sh"
+          ssh -p ${SSH_PORT} -l ${SSH_USER} ${SSH_HOST} bash <<EOF
+          sudo tar -xzf /tmp/rport-pairing_Linux_x86_64.tar.gz -C /usr/local/bin rport-pairing
+          service rport-pairing restart
+          EOF
