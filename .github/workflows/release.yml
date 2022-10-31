@@ -51,5 +51,6 @@ jobs:
           scp -P ${SSH_PORT} ./dist/rport-pairing_Linux_x86_64.tar.gz ${SSH_USER}@${SSH_HOST}:/tmp
           ssh -p ${SSH_PORT} -l ${SSH_USER} ${SSH_HOST} bash <<EOF
           sudo tar -xzf /tmp/rport-pairing_Linux_x86_64.tar.gz -C /usr/local/bin rport-pairing
-          service rport-pairing restart
+          sudo service rport-pairing restart
+          rm -f /tmp/rport-pairing_Linux_x86_64.tar.gz
           EOF
