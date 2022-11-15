@@ -210,7 +210,7 @@ install_tacoscript() {
   fi
   cd /tmp
   test -e tacoscript.tar.gz && rm -f tacoscript.tar.gz
-  curl -LJs "https://download.rport.io/tacoscript/${RELEASE}/?arch=Linux_${ARCH}" -o tacoscript.tar.gz
+  curl -Ls "https://download.rport.io/tacoscript/${RELEASE}/?arch=Linux_${ARCH}" -o tacoscript.tar.gz
   tar xvzf tacoscript.tar.gz -C /usr/local/bin/ tacoscript
   rm -f tacoscript.tar.gz
   echo "Tacoscript installed $(/usr/local/bin/tacoscript --version)"
