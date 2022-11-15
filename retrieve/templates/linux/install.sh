@@ -128,13 +128,7 @@ create_systemd_service() {
   echo "Installing systemd service for rport"
   test -e /etc/systemd/system/rport.service && rm -f /etc/systemd/system/rport.service
   /usr/local/bin/rport --service install --service-user "${USER}" --config /etc/rport/rport.conf
-  if is_available systemctl; then
-    systemctl daemon-reload
-    systemctl start rport
-    systemctl enable rport
-  elif is_available service; then
-    service rport start
-  fi
+  start_rport
 }
 
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
@@ -308,11 +302,11 @@ verify_and_terminate() {
 
 use_alternative_machineid() {
   # If the /etc/machine-id is already used, use an alternative unique id
-  systemctl stop rport
+  stop_rport
   rm -f "$LOG_FILE"
   echo "Creating a unique id based on the mac addresses of the network cards."
   sed -i "s/^id = .*/id = \"$(alt_machine_id)\"/g" "$CONFIG_FILE"
-  systemctl start rport
+  start_rport
 }
 
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------

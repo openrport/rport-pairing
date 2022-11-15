@@ -22,7 +22,7 @@ uninstall() {
     echo 1>&2 "You are running the rportd server on this machine. Uninstall manually."
     exit 0
   fi
-  systemctl stop rport >/dev/null 2>&1 || true
+  stop_rport >/dev/null 2>&1 || true
   rc-service rport stop >/dev/null 2>&1 || true
   pkill -9 rport >/dev/null 2>&1 || true
   rport --service uninstall >/dev/null 2>&1 || true
@@ -390,4 +390,28 @@ get_ip_from_fqdn() {
     return 0
   fi
   ping "$1" -c 1 -q 2>&1 | grep -Po "(\d{1,3}\.){3}\d{1,3}"
+}
+
+start_rport(){
+  if is_available systemctl; then
+      systemctl daemon-reload
+      systemctl start rport
+      systemctl enable rport
+    elif [ -e /etc/init/rport.conf ];then
+      # We are on an upstart system
+      start rport
+    elif is_available service; then
+      service rport start
+    fi
+}
+
+stop_rport(){
+  if is_available systemctl; then
+      systemctl stop rport
+    elif [ -e /etc/init/rport.conf ];then
+      # We are on an upstart system
+      stop rport
+    elif is_available service; then
+      service rport stop
+    fi
 }
