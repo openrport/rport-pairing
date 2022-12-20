@@ -522,4 +522,5 @@ function Optimize-ServiceStartup
 {
     param()
     & sc.exe config rport start= delayed-auto
+    & sc.exe failure rport reset= 0 actions= restart/5000
 }

@@ -326,7 +326,7 @@ $configContent = Add-WatchdogIntegration -ConfigContent $configContent
 $Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
 [IO.File]::WriteAllLines($configFile, $configContent, $Utf8NoBomEncoding)
 
-# Set the service startup
+# Set the service startup and recovery actions
 Optimize-ServiceStartup
 
 # Create a scheduled task to restart RPort.

@@ -155,6 +155,8 @@ if (-not(Get-Service rport -erroraction 'silentlycontinue'))
     Write-Output ""
     Write-Output "* Registering rport as a windows service."
     & "$( $installDir )\rport.exe" --service install --config $configFile
+    # Set the service startup and recovery actions
+    Optimize-ServiceStartup
 }
 else
 {
@@ -198,7 +200,6 @@ if ($i)
 }
 # Clean Up
 Remove-Item $downloadFile
-
 
 
 function Finish
