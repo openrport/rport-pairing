@@ -76,6 +76,21 @@ print_distro() {
 }
 
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
+#          NAME:  has_sudo
+#   DESCRIPTION:  Check if sudo is installed and sudo rules can be managed as separated files
+#       RETURNS:  0 (success,  sudo os present), 1 (fail, sudo can't be used by rport)
+#----------------------------------------------------------------------------------------------------------------------
+has_sudo() {
+  if ! which sudo >/dev/null 2>&1; then
+    return 1
+  fi
+  if [ -e /etc/sudoers.d/ ]; then
+    return 0
+  fi
+  return 1
+}
+
+#---  FUNCTION  -------------------------------------------------------------------------------------------------------
 #          NAME:  create_sudoers_all
 #   DESCRIPTION:  create a sudoers file to grant full sudo right to the rport user
 #----------------------------------------------------------------------------------------------------------------------
@@ -86,7 +101,7 @@ create_sudoers_all() {
     return 1
   fi
 
-  if is_available sudo; then
+  if has_sudo; then
     echo "#
 # This file has been auto-generated during the installation of the rport client.
 # Change to your needs or delete.
@@ -110,7 +125,7 @@ create_sudoers_updates() {
     return 0
   fi
 
-  if is_available sudo; then
+  if has_sudo; then
     echo '#
 # This file has been auto-generated during the installation of the rport client.
 # Change to your needs.
@@ -392,26 +407,26 @@ get_ip_from_fqdn() {
   ping "$1" -c 1 -q 2>&1 | grep -Po "(\d{1,3}\.){3}\d{1,3}"
 }
 
-start_rport(){
+start_rport() {
   if is_available systemctl; then
-      systemctl daemon-reload
-      systemctl start rport
-      systemctl enable rport
-    elif [ -e /etc/init/rport.conf ];then
-      # We are on an upstart system
-      start rport
-    elif is_available service; then
-      service rport start
-    fi
+    systemctl daemon-reload
+    systemctl start rport
+    systemctl enable rport
+  elif [ -e /etc/init/rport.conf ]; then
+    # We are on an upstart system
+    start rport
+  elif is_available service; then
+    service rport start
+  fi
 }
 
-stop_rport(){
+stop_rport() {
   if is_available systemctl; then
-      systemctl stop rport
-    elif [ -e /etc/init/rport.conf ];then
-      # We are on an upstart system
-      stop rport
-    elif is_available service; then
-      service rport stop
-    fi
+    systemctl stop rport
+  elif [ -e /etc/init/rport.conf ]; then
+    # We are on an upstart system
+    stop rport
+  elif is_available service; then
+    service rport stop
+  fi
 }
