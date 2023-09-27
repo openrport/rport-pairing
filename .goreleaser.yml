@@ -17,10 +17,6 @@ archives:
     name_template: "rport-pairing_{{ .Os }}_{{ .Arch }}"
     builds:
       - rport-pairing
-    replacements:
-      linux: Linux
-      amd64: x86_64
-      arm64: aarch64
     files:
       - rport-pairing.conf.example
       - rport-pairing.service
