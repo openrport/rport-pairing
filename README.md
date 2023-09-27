@@ -1,8 +1,10 @@
 
-[![License](https://img.shields.io/github/license/cloudradar-monitoring/rport-pairing?style=for-the-badge)](https://github.com/cloudradar-monitoring/rport-pairing/blob/main/LICENSE)
-[![Go Tests](https://img.shields.io/github/actions/workflow/status/cloudradar-monitoring/rport-pairing/go_test.yml?branch=main&style=for-the-badge&label=Go%20Tests&logo=Go)](https://github.com/cloudradar-monitoring/rport-pairing/actions/workflows/functional_test_linux.yml)
-[![Linux Tests](https://img.shields.io/github/actions/workflow/status/cloudradar-monitoring/rport-pairing/functional_test_linux.yml?branch=main&style=for-the-badge&label=Linux%20Tests&logo=Linux)](https://github.com/cloudradar-monitoring/rport-pairing/actions/workflows/functional_test_linux.yml)
-[![Windows Tests](https://img.shields.io/github/actions/workflow/status/cloudradar-monitoring/rport-pairing/functional_test_windows.yml?branch=main&style=for-the-badge&label=Windows%20Tests&logo=Windows)](https://github.com/cloudradar-monitoring/rport-pairing/actions/workflows/functional_test_windows.yml)
+[![License](https://img.shields.io/github/license/openrport/rport-pairing?style=for-the-badge)](https://github.com/openrport/rport-pairing/blob/main/LICENSE)
+[![Go Tests](https://img.shields.io/github/actions/workflow/status/openrport/rport-pairing/go_test.yml?branch=main&style=for-the-badge&label=Go%20Tests&logo=Go)](https://github.com/openrport/rport-pairing/actions/workflows/functional_test_linux.yml)
+[![Linux Tests](https://img.shields.io/github/actions/workflow/status/openrport/rport-pairing/functional_test_linux.yml?branch=main&style=for-the-badge&label=Linux%20Tests&logo=Linux)](https://github.com/openrport/rport-pairing/actions/workflows/functional_test_linux.yml)
+[![Windows Tests](https://img.shields.io/github/actions/workflow/status/openrport/rport-pairing/functional_test_windows.yml?branch=main&style=for-the-badge&label=Windows%20Tests&logo=Windows)](https://github.com/openrport/rport-pairing/actions/workflows/functional_test_windows.yml)
+
+> This repository is a fork from the original cloudradar-monitoring paring service for rport in an effort to continue an opensource version.
 
 A service to install and connect rport clients easily.
 
@@ -85,7 +87,7 @@ To run the service on your server proceed as follows.
 
 ````bash
 cd /tmp
-curl -LO https://github.com/cloudradar-monitoring/rport-pairing/releases/latest/download/rport-pairing_Linux_$(uname -m).tar.gz
+curl -LO https://github.com/openrport/rport-pairing/releases/latest/download/rport-pairing_Linux_$(uname -m).tar.gz
 tar xf rport-pairing*Linux*.tar.gz
 mv rport-pairing /usr/local/bin/
 mv rport-pairing.conf.example /etc/rport/rport-pairing.conf

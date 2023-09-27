@@ -17,3 +17,4 @@ vendor/
 release.sh
 push_to_prod.sh
 rport.example.conf
+.idea
