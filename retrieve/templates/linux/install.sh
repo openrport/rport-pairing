@@ -143,15 +143,15 @@ create_user() {
       abort "No command found to add a user"
     fi
   fi
-  test -e "$LOG_DIR" || mkdir -p "$LOG_DIR"
-  test -e /var/lib/rport/scripts || mkdir -p /var/lib/rport/scripts
-  chown "${USER}":root "$LOG_DIR"
-  chown "${USER}":root /var/lib/rport/scripts
-  chmod 0700 /var/lib/rport/scripts
-  chown "${USER}":root "$CONFIG_FILE"
-  chmod 0640 "$CONFIG_FILE"
-  chown root:root /usr/local/bin/rport
-  chmod 0755 /usr/local/bin/rport
+#  test -e "$LOG_DIR" || mkdir -p "$LOG_DIR"
+#  test -e /var/lib/rport/scripts || mkdir -p /var/lib/rport/scripts
+#  chown "${USER}":root "$LOG_DIR"
+#  chown "${USER}":root /var/lib/rport/scripts
+#  chmod 0700 /var/lib/rport/scripts
+#  chown "${USER}":root "$CONFIG_FILE"
+#  chmod 0640 "$CONFIG_FILE"
+#  chown root:root /usr/local/bin/rport
+#  chmod 0755 /usr/local/bin/rport
 }
 
 set_file_and_dir_owner() {
@@ -326,12 +326,12 @@ install_client() {
   test_connection
   download_and_extract
   install_bin rport
+  create_user
   install_config rport
   prepare_config
   enable_lan_monitoring
   detect_interpreters
   set_file_and_dir_owner
-  create_user
   if is_available openrc; then
     create_openrc_service
   else

@@ -8,7 +8,7 @@ exit_trap() {
   echo ""
   echo "An error occurred."
   echo "Try running in debug mode with 'sh -x ${MY_COMMAND}'"
-  echo "Ask for help on https://github.com/cloudradar-monitoring/rport-pairing/discussions/categories/help-needed "
+  echo "Ask for help on https://github.com/openrport/openrport-pairing/discussions/categories/help-needed "
   echo ""
 }
 trap exit_trap EXIT

@@ -1,4 +1,58 @@
 set -e
+if which tput >/dev/null 2>&1; then
+    true
+else
+    alias tput=true
+fi
+
+throw_fatal() {
+    echo 2>&1 "[!] $1"
+    echo "[=] Fatal Exit. Don't give up. Good luck with the next try."
+    false
+}
+
+throw_hint() {
+    echo "[>] $1"
+}
+
+throw_info() {
+    echo "$(tput setab 2 2>/dev/null)$(tput setaf 7 2>/dev/null)[*]$(tput sgr 0 2>/dev/null) $1"
+}
+
+throw_warning() {
+    echo "[:] $1"
+}
+
+throw_debug() {
+    echo "$(tput setab 4 2>/dev/null)$(tput setaf 7 2>/dev/null)[-]$(tput sgr 0 2>/dev/null) $1"
+}
+
+wait_for_rport() {
+    i=0
+    while [ "$i" -lt 40 ]; do
+        pidof rport >/dev/null 2>&1 && return 0
+        echo "$i waiting for rport process to come up ..."
+        sleep 0.2
+        i=$((i + 1))
+    done
+    return 1
+}
+
+is_rport_subprocess() {
+    if [ -n "$1" ]; then
+        SEARCH_PID=$1
+    else
+        SEARCH_PID=$$
+    fi
+    PARENT_PID=$(ps -o ppid= -p "$SEARCH_PID" | tr -d ' ')
+    PARENT_NAME=$(ps -p "$PARENT_PID" -o comm=)
+    if [ "$PARENT_NAME" = "rport" ]; then
+        return 0
+    elif [ "$PARENT_PID" -eq 1 ]; then
+        return 1
+    fi
+    is_rport_subprocess "$PARENT_PID"
+}
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
 #          NAME:  is_available
 #   DESCRIPTION:  Check if a command is available on the system.
