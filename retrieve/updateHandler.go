@@ -1,7 +1,7 @@
 package retrieve
 
 import (
-	"github.com/cloudradar-monitoring/rport-pairing/deposit"
+	"github.com/openrport/rport-pairing/deposit"
 	"net/http"
 )
 

@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-	"github.com/cloudradar-monitoring/rport-pairing/deposit"
+	"github.com/openrport/rport-pairing/deposit"
 	"github.com/spf13/viper"
 	"log"
 )

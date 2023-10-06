@@ -1,7 +1,7 @@
 package config_test
 
 import (
-	"github.com/cloudradar-monitoring/rport-pairing/internal/config"
+	"github.com/openrport/rport-pairing/internal/config"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

@@ -4,9 +4,10 @@
 ## The scripts creates a initial configuration and connects the client to your server.
 ##
 ## For any inquiries use our GitHub forum on
-## https://github.com/cloudradar-monitoring/rport-pairing/discussions/
+## https://github.com/openrport/rport-pairing/discussions/
 ##
 ## Copyright cloudradar GmbH, Potsdam Germany, 2022
+## Maintainer openrport, Lille, France, 2023
 ## Released under the MIT open-source license.
-## https://github.com/cloudradar-monitoring/rport-pairing/blob/main/LICENSE
+## https://github.com/openrport/rport-pairing/blob/main/LICENSE
 ##

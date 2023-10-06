@@ -3,8 +3,8 @@ package deposit_test
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/cloudradar-monitoring/rport-pairing/deposit"
-	"github.com/cloudradar-monitoring/rport-pairing/internal/cache"
+	"github.com/openrport/rport-pairing/deposit"
+	"github.com/openrport/rport-pairing/internal/cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"

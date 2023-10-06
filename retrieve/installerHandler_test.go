@@ -2,10 +2,10 @@ package retrieve_test
 
 import (
 	"fmt"
-	"github.com/cloudradar-monitoring/rport-pairing/deposit"
-	"github.com/cloudradar-monitoring/rport-pairing/internal/cache"
-	"github.com/cloudradar-monitoring/rport-pairing/retrieve"
 	"github.com/gorilla/mux"
+	"github.com/openrport/rport-pairing/deposit"
+	"github.com/openrport/rport-pairing/internal/cache"
+	"github.com/openrport/rport-pairing/retrieve"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"

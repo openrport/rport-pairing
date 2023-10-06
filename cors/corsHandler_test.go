@@ -1,7 +1,7 @@
 package cors_test
 
 import (
-	"github.com/cloudradar-monitoring/rport-pairing/cors"
+	"github.com/openrport/rport-pairing/cors"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"

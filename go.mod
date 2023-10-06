@@ -1,4 +1,4 @@
-module github.com/cloudradar-monitoring/rport-pairing
+module github.com/openrport/rport-pairing
 
 go 1.18
 

@@ -3,7 +3,7 @@ CURRENT_VERSION=$(/usr/local/bin/rport --version | awk '{print $2}')
 download_package() {
   if [ "$VERSION" != "undef" ]; then
     RELEASE=custom
-    URL="https://github.com/cloudradar-monitoring/rport/releases/download/${VERSION}/rport_${VERSION}_Linux_${ARCH}.tar.gz"
+    URL="https://github.com/openrport/openrport/releases/download/${VERSION}/rport_${VERSION}_Linux_${ARCH}.tar.gz"
     if curl -fI "$URL" >/dev/null 2>&1; then
       true
     else
@@ -11,7 +11,7 @@ download_package() {
       exit 1
     fi
   else
-    URL="https://download.rport.io/rport/${RELEASE}/?arch=Linux_${ARCH}&gt=${CURRENT_VERSION}"
+    URL="https://download.openrport.io/rport/${RELEASE}/?arch=Linux_${ARCH}&gt=${CURRENT_VERSION}"
   fi
   curl -Ls "${URL}" -o rport.tar.gz
 }
