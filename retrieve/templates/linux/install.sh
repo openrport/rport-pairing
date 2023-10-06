@@ -540,7 +540,7 @@ ENABLE_FILEREC_SUDO=0
 TAGS=""
 XTAG=""
 NO_REPO=0
-while getopts 'hvfcsuxstildrba:g:' opt; do
+while getopts 'hvfcsuxstildrba:g:z:' opt; do
   case "${opt}" in
 
   h)
