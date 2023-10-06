@@ -8,7 +8,7 @@
 
 A service to install and connect rport clients easily.
 
-> 📣 This repository holds the sources used to run the public pairing service on https://pairing.rport.io.
+> 📣 This repository holds the sources used to run the public pairing service on https://pairing.openrport.io.
 
 ## 👫 Use the pairing service
 Below you will get detailed information how the pairing works. The explained requests are executed by the RPort user interface when you click on the "Install Client" button.
@@ -80,7 +80,7 @@ sudo sh rport-update.sh
 ```
 
 ## 🚚 Install and run a pairing service
-Because the service does not store any data, there is nothing to stop you using the public and free service on https://pairing.rport.io.
+Because the service does not store any data, there is nothing to stop you using the public and free service on https://pairing.openrport.io.
 This public service is also the predefined default on all RPort server installations.
 
 To run the service on your server proceed as follows.

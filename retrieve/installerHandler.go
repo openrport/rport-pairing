@@ -2,8 +2,8 @@ package retrieve
 
 import (
 	"fmt"
-	"github.com/cloudradar-monitoring/rport-pairing/deposit"
 	"github.com/gorilla/mux"
+	"github.com/openrport/rport-pairing/deposit"
 	"github.com/patrickmn/go-cache"
 	"net/http"
 )

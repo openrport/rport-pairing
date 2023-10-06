@@ -7,12 +7,12 @@
 #
 #   DESCRIPTION: Rport removal for various systems/distributions
 #
-#          BUGS: https://github.com/cloudradar-monitoring/rport/issues
+#          BUGS: https://github.com/openrport/openrport/issues
 #
 #     COPYRIGHT: (c) 2021 by the CloudRadar Team,
 #
 #       LICENSE: MIT
-#  ORGANIZATION: cloudradar GmbH, Potsdam, Germany (cloudradar.io)
+#  ORGANIZATION: openrport , Lille, France (openrport.io)
 #       CREATED: 30/09/2021
 #======================================================================================================================
 
@@ -25,5 +25,5 @@ echo " [ FINISH  ] RPort client removed."
 echo ""
 echo "#"
 echo "# If you dislike RPort, please share your feedback on "
-echo "# https://github.com/cloudradar-monitoring/rport/discussions/categories/general "
+echo "# https://github.com/openrport/openrport/discussions/categories/general "
 echo "# "
