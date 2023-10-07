@@ -11,7 +11,7 @@ download_package() {
       exit 1
     fi
   else
-    URL="https://download.openrport.io/rport/${RELEASE}/?arch=Linux_${ARCH}&gt=${CURRENT_VERSION}"
+    URL="https://download.openrport.io/rport/${RELEASE}/latest.php?arch=Linux_${ARCH}"
   fi
   curl -Ls "${URL}" -o rport.tar.gz
 }
@@ -248,10 +248,10 @@ finish() {
 #
 #  Logs are written to /var/log/rport/rport.log.
 #
-#  READ THE DOCS ON https://kb.rport.io/
+#  READ THE DOCS ON https://kb.openrport.io/
 #
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#  Give us a star on https://github.com/cloudradar-monitoring/rport
+#  Give us a star on https://github.com/openrport/openrport
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #
 
@@ -279,7 +279,7 @@ Try the following to investigate:
 
 2) tail /var/log/rport/rport.log
 
-3) Ask for help on https://kb.rport.io/need-help/request-support
+3) Ask for help on https://kb.oppenrport.io/need-help/request-support
 "
   if runs_with_selinux; then
     echo "
