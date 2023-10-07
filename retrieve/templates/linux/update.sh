@@ -16,6 +16,19 @@ download_package() {
   curl -Ls "${URL}" -o rport.tar.gz
 }
 
+current_version() {
+    if [ -e /usr/bin/rport ]; then
+        /usr/bin/rport --version | awk '{print $2}'
+        return 0
+    fi
+    if [ -e /usr/local/bin/rport ]; then
+        /usr/local/bin/rport --version | awk '{print $2}'
+        return 0
+    fi
+    echo "Failed to get current rport version"
+    exit 1
+}
+
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
 #          NAME:  restart_rport()
 #   DESCRIPTION:  The restart of RPort must be detached from this process in case the update
@@ -29,13 +42,18 @@ restart_rport() {
   else
     RESTART_CMD='systemctl restart rport'
   fi
-  if command -v at >/dev/null 2>&1; then
-    echo "$RESTART_CMD" | at now +1 minute
-    echo "Restart of rport scheduled via atd."
-  else
-    nohup sh -c "sleep 10;$RESTART_CMD" >/dev/null 2>&1 &
-    echo "Restart of rport scheduled via nohup+sleep."
+  if [ "$1" = "background" ]; then
+    if command -v at >/dev/null 2>&1; then
+      echo "$RESTART_CMD" | at now +1 minute
+      echo "Restart of rport scheduled via atd."
+    else
+      nohup sh -c "sleep 10;$RESTART_CMD" >/dev/null 2>&1 &
+      echo "Restart of rport scheduled via nohup+sleep."
+    fi
+    return 0
   fi
+  throw_info "Restarting RPort using '$RESTART_CMD'"
+  $RESTART_CMD
 }
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
 #          NAME:  update
@@ -228,7 +246,7 @@ insert_watchdog() {
   ## Write a state file to {data_dir}/state.json that can be evaluated by external watchdog implementations.
   ## On Linux this also enables the systemd watchdog integration using the systemd notify socket.
   ## Requires max_retry_count = -1 and keep_alive > 0
-  ## Read more https://oss.rport.io/advanced/watchdog-integration/
+  ## Read more https://oss.openrport.io/advanced/watchdog-integration/
   ## Disabled by default.
   #watchdog_integration = false
 EOF
