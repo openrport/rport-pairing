@@ -54,36 +54,9 @@ else
     $currentVersion = $( $versionString -split " " )[1]
 }
 
-if ($v)
-{
-    # Set a specific version for the download url
-    $url = "https://github.com/cloudradar-monitoring/rport/releases/download/$( $v )/rport_$( $v )_Windows_x86_64.zip"
-    Write-Output "* Downloading  $( $url ) ."
-}
-else
-{
-    $url = "https://downloads.rport.io/rport/$( $release )/?arch=Windows_x86_64&gt=$currentVersion"
-}
-$temp = 'C:\windows\temp\rport-update\'
-if (Test-Path $temp)
-{
-    Remove-Item $temp -Recurse -Force
-}
-New-Item -ItemType Directory -Force -Path $temp|Out-Null
-$downloadFile = "C:\windows\temp\rport_Windows_x86_64.zip"
+$isMsiInstallation = $False
 
-Write-Output ""
-# Download the package
-try
-{
-    Invoke-WebRequest -Uri $url -OutFile $downloadFile
-}
-catch
-{
-    Write-Output "* Error: Download status code $( $_.Exception.Response.StatusCode.Value__ )"
-    exit 1
-}
-
+$downloadFile = Invoke-Download -gt $currentVersion -pkgUrl $pkgUrl
 If ((Get-Item $downloadFile).length -eq 0)
 {
     Write-Output "* No RPort update needed. You are on the latest $currentVersion version."
@@ -98,21 +71,60 @@ If ((Get-Item $downloadFile).length -eq 0)
 }
 Write-Output "* Download finished and stored to $( $downloadFile ) ."
 
-# Extract the ZIP file
-Write-Output "* Extracting Rport.exe to $temp"
-if (Test-Path $( $temp + 'rport.example.conf' ))
+# Create an empty temp dir
+$temp = 'C:\windows\temp\rport-update\'
+if (Test-Path $temp)
 {
-    Remove-Item $( $temp + 'rport.example.conf' ) -Force
+    Remove-Item $temp -Recurse -Force
 }
-if (Test-Path $( $temp + 'rport.exe' ))
+New-Item -ItemType Directory -Force -Path $temp|Out-Null
+
+if ($isMsiInstallation)
 {
-    Remove-Item $( $temp + 'rport.exe' ) -Force
+    # RPort is installed via MSI, so all updates will be handled by MSI
+    # Move the MSI to a folder from where it's picket up later
+    Move-Item $downloadFile $( $temp + 'rport.msi' )
 }
-Expand-Zip -Path $downloadFile -DestinationPath $temp
-Remove-Item $downloadFile
-Remove-Item $( $temp + 'rport.example.conf' )
-$targetVersion = (& "$( $temp )/rport.exe" --version) -replace "version ", ""
-Write-Output "* New version will be $targetVersion."
+elseif($downloadFile -match '\.msi$')
+{
+    Write-Information "* Migrating to MSI installation"
+    #$targetVersion = Get-MSIVersionInfo -Path $downloadFile
+    # RPort is currently installed via ZIP but the update comes as MSI.
+    # Move the MSI to a folder from where it's picket up later
+    Move-Item $downloadFile $( $temp + 'rport.msi' )
+    # Create a migration that will be executed after the rport client has been stopped.
+    New-PSScriptFile -Path $( $temp + 'migration.ps1' ) -ScriptBlock {
+        & "C:\Program Files\rport\rport.exe" --service uninstall
+        Remove-Item "C:\Program Files\rport\rport.exe"
+        Remove-Item "C:\Program Files\rport\uninstall.bat"
+    }
+
+}
+else
+{
+    # Rport is installed from a ZIP file and shall be upgraded via ZIP
+    # Extract the ZIP file and place it into a folder from where it's picked up later
+    Write-Output "* Extracting Rport.exe to $temp"
+    if (Test-Path $( $temp + 'rport.example.conf' ))
+    {
+        Remove-Item $( $temp + 'rport.example.conf' ) -Force
+    }
+    if (Test-Path $( $temp + 'rport.exe' ))
+    {
+        Remove-Item $( $temp + 'rport.exe' ) -Force
+    }
+    Expand-Zip -Path $downloadFile -DestinationPath $temp
+    Remove-Item $downloadFile
+    Remove-Item $( $temp + 'rport.example.conf' )
+    $targetVersion = (& "$( $temp )/rport.exe" --version) -replace "version ", ""
+    Write-Output "* New version will be $targetVersion."
+    Remove-Item $temp -Recurse -Force
+    # Now the new rport.exe is stored in a temporary directory.
+    # Because rport is still running, we cannot replace the current version yet.
+    # Changing the exe is done by Invoke-Later so the current rport connection can be closed first.
+}
+
+
 
 function ExtendConfig
 {
@@ -270,7 +282,7 @@ function Add-WatchdogIntegration
   ## Disabled by default.
   #watchdog_integration = false
 "
-    $ConfigContent -replace "## Optionally set the 'Host' header","$($watchdogSnippet)`n`n  $&"
+    $ConfigContent -replace "## Optionally set the 'Host' header", "$( $watchdogSnippet )`n`n  $&"
     Write-Information "* watchdog integration inserted"
 }
 
@@ -334,9 +346,24 @@ try
 {
     Invoke-Later -Description "Restart RPort" -Delay 10 -ScriptBlock {
         Stop-Service rport
-        Copy-Item 'C:\windows\temp\rport-update\rport.exe' 'C:\Program Files\rport\rport.new'
-        Move-Item 'C:\Program Files\rport\rport.new'  'C:\Program Files\rport\rport.exe' -Force
-        Remove-Item 'C:\windows\temp\rport-update' -Force -Recurse
+        $exeUpdate = 'C:\windows\temp\rport-update\rport.exe'
+        $msiUpdate = 'C:\windows\temp\rport-update\rport.msi'
+        $migartion = 'C:\windows\temp\rport-update\migration.ps1'
+        if (Test-Path $exeUpdate)
+        {
+            Copy-Item $exeUpdate 'C:\Program Files\rport\rport.new'
+            Move-Item 'C:\Program Files\rport\rport.new'  'C:\Program Files\rport\rport.exe' -Force
+            Remove-Item 'C:\windows\temp\rport-update' -Force -Recurse
+        }
+        if (Test-Path $migartion)
+        {
+            & $migartion
+        }
+        if (Test-Path $msiUpdate)
+        {
+            $msiLog = 'C:\windows\temp\rport-update\rport.msi-install.log'
+            Start-Process msiexec.exe -Wait -ArgumentList "/i $( $msiUpdate ) /qn /quiet /log $( $msiLog )"
+        }
         Start-Service rport
     }
 }
@@ -361,7 +388,7 @@ Write-Output "
 #  Update of rport finished.
 #
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#  Give us a star on https://github.com/cloudradar-monitoring/rport
+#  Give us a star on https://github.com/oenrport/openrport
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Thanks for using

@@ -17,4 +17,6 @@ Param(
     [String]$v,
 # Enable file reception
     [Switch]$r
+# Use a specific version from any URL
+    [string]$pkgUrl
 )
