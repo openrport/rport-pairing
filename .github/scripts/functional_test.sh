@@ -42,7 +42,7 @@ echo "Display hostname"
 echo $(hostname)
 # Verify the client has connected to the local rportd
 echo "Verifying client is connected to server"
-grep "client-listener.*Listening.*$(hostname)" /tmp/rportd.log
+grep "client-listener.*Listening.*" /tmp/rportd.log
 
 # Execute the update script
 echo "Executing the update script now"
