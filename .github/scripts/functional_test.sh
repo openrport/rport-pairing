@@ -35,6 +35,7 @@ sudo sh rport-installer.sh -h|grep "Install with SELinux enabled"
 echo "Executing the install now"
 sudo sh rport-installer.sh -x -s
 
+cat /tmp/rportd.log
 # Verify the client has connected to the local rportd
 echo "Verifying client is connected to server"
 grep "client-listener.*Listening.*$(hostname)" /tmp/rportd.log
