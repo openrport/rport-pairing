@@ -39,7 +39,7 @@ echo "Display log for rportd"
 cat /tmp/rportd.log
 
 echo "Display hostname"
-$(hostname)
+echo $(hostname)
 # Verify the client has connected to the local rportd
 echo "Verifying client is connected to server"
 grep "client-listener.*Listening.*$(hostname)" /tmp/rportd.log
