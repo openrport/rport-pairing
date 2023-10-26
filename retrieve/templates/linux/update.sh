@@ -140,6 +140,7 @@ check_scripts() {
   else
     echo 1>&2 "Please use the switches -x/-d to enable or disable script execution."
     help
+    # shellcheck disable=SC2317  # Don't warn about unreachable commands in this function
     exit 1
   fi
   if ask_yes_no "Do you want to activate script execution?"; then
@@ -165,6 +166,7 @@ check_sudo() {
   else
     echo 1>&2 "Please use the switches -s/-n to enable or disable sudo rights."
     help
+    # shellcheck disable=SC2317  # Don't warn about unreachable commands in this function
     exit 1
   fi
   if ask_yes_no "Do you want to activate sudo rights for RPort remote script execution?"; then
