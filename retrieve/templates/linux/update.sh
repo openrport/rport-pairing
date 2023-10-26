@@ -37,23 +37,23 @@ current_version() {
 #       RETURNS:
 #----------------------------------------------------------------------------------------------------------------------
 restart_rport() {
-  if [ -e /etc/init.d/rport ]; then
-    RESTART_CMD='/etc/init.d/rport restart'
-  else
-    RESTART_CMD='systemctl restart rport'
-  fi
-  if [ "$1" = "background" ]; then
-    if command -v at >/dev/null 2>&1; then
-      echo "$RESTART_CMD" | at now +1 minute
-      throw_info "Restart of rport scheduled via atd."
+    if [ -e /etc/init.d/rport ]; then
+        RESTART_CMD='/etc/init.d/rport restart'
     else
-      nohup sh -c "sleep 10;$RESTART_CMD" >/dev/null 2>&1 &
-      throw_info "Restart of rport scheduled via nohup+sleep."
+        RESTART_CMD='systemctl restart rport'
     fi
-    return 0
-  fi
-  throw_info "Restarting RPort using '$RESTART_CMD'"
-  $RESTART_CMD
+    if [ "$1" = "background" ]; then
+        if command -v at >/dev/null 2>&1; then
+            echo "$RESTART_CMD" | at now +1 minute
+            throw_info "Restart of rport scheduled via atd."
+        else
+            nohup sh -c "sleep 10;$RESTART_CMD" >/dev/null 2>&1 &
+            throw_info "Restart of rport scheduled via nohup+sleep."
+        fi
+        return 0
+    fi
+    throw_info "Restarting RPort using '$RESTART_CMD'"
+    $RESTART_CMD
 }
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
 #          NAME:  update
