@@ -37,23 +37,23 @@ current_version() {
 #       RETURNS:
 #----------------------------------------------------------------------------------------------------------------------
 restart_rport() {
-  if [ -e /etc/init.d/rport ]; then
-    RESTART_CMD='/etc/init.d/rport restart'
-  else
-    RESTART_CMD='systemctl restart rport'
-  fi
-  if [ "$1" = "background" ]; then
-    if command -v at >/dev/null 2>&1; then
-      echo "$RESTART_CMD" | at now +1 minute
-      echo "Restart of rport scheduled via atd."
+    if [ -e /etc/init.d/rport ]; then
+        RESTART_CMD='/etc/init.d/rport restart'
     else
-      nohup sh -c "sleep 10;$RESTART_CMD" >/dev/null 2>&1 &
-      echo "Restart of rport scheduled via nohup+sleep."
+        RESTART_CMD='systemctl restart rport'
     fi
-    return 0
-  fi
-  throw_info "Restarting RPort using '$RESTART_CMD'"
-  $RESTART_CMD
+    if [ "$1" = "background" ]; then
+        if command -v at >/dev/null 2>&1; then
+            echo "$RESTART_CMD" | at now +1 minute
+            throw_info "Restart of rport scheduled via atd."
+        else
+            nohup sh -c "sleep 10;$RESTART_CMD" >/dev/null 2>&1 &
+            throw_info "Restart of rport scheduled via nohup+sleep."
+        fi
+        return 0
+    fi
+    throw_info "Restarting RPort using '$RESTART_CMD'"
+    $RESTART_CMD
 }
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
 #          NAME:  update
@@ -63,10 +63,11 @@ update() {
   check_prerequisites
   cd /tmp
   download_package
+  RESTART_IN="background"
   test -e rport && rm -f rport
   if tar xzf rport.tar.gz rport 2>/dev/null; then
     TARGET_VERSION=$(./rport --version | awk '{print $2}')
-    echo "Updating from ${CURRENT_VERSION} to latest ${RELEASE} $(./rport --version)"
+    throw_info "Updating from ${CURRENT_VERSION} to latest ${RELEASE} $(./rport --version)"
     check_scripts
     check_sudo
     create_sudoers_updates
@@ -76,9 +77,9 @@ update() {
     enable_file_reception
     insert_watchdog
     mv -f /tmp/rport /usr/local/bin/rport
-    restart_rport
+    restart_rport $RESTART_IN
   else
-    echo "Nothing to do. RPort is on the latest version ${CURRENT_VERSION}."
+    throw_info "Nothing to do. RPort is on the latest version ${CURRENT_VERSION}."
     [ "$ENABLE_TACOSCRIPT" -eq 1 ] && install_tacoscript
     exit 0
   fi
@@ -140,6 +141,7 @@ check_scripts() {
   else
     echo 1>&2 "Please use the switches -x/-d to enable or disable script execution."
     help
+    # shellcheck disable=SC2317  # Don't warn about unreachable commands in this function
     exit 1
   fi
   if ask_yes_no "Do you want to activate script execution?"; then
@@ -165,6 +167,7 @@ check_sudo() {
   else
     echo 1>&2 "Please use the switches -s/-n to enable or disable sudo rights."
     help
+    # shellcheck disable=SC2317  # Don't warn about unreachable commands in this function
     exit 1
   fi
   if ask_yes_no "Do you want to activate sudo rights for RPort remote script execution?"; then

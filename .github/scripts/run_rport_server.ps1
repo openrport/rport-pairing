@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 mkdir C:\rport
 Set-Location C:\rport
-Invoke-WebRequest "https://download.rport.io/rportd/stable/?arch=Windows_x86_64" -OutFile rportd.zip
+Invoke-WebRequest "https://download.openrport.io/rportd/stable/?arch=_x86_64" -OutFile rportd.zip
 Expand-Archive rportd.zip .
 ./rportd --version
 
