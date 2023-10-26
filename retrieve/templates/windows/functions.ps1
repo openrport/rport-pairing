@@ -10,15 +10,20 @@ trap
 # Installation or updare of rport finished with errors.
 #
 
+Error in line $( $_.InvocationInfo.ScriptLineNumber )
+    $_
+
 Try the following to investigate:
 1) sc query rport
 
 2) open C:\Program Files\rport\rport.log
 
-3) READ THE DOCS on https://kb.rport.io
+3) READ THE DOCS on https://kb.openrport.io
 
-4) Request support on https://github.com/cloudradar-monitoring/rport-pairing/discussions/categories/help-needed
+4) Request support on https://github.com/openrport/rport-pairing/discussions/categories/help-needed
 "
+    Set-Location $myLocation
+    exit 1
 }
 
 $InstallerLogFile = $false
@@ -175,11 +180,6 @@ function Enable-InterpreterAlias
         [Object[]]$ConfigContent
     )
 
-    if (-Not([System.Version]$targetVersion -ge [System.Version]"0.5.12"))
-    {
-        Write-Information "* RPort version $targetVersion does not support Interpreter Aliases"
-        return
-    }
     Write-Information "* Looking for script interpreters."
     $interpreters = Find-Interpreter
     Write-Information "* $( $interpreters.count ) script interpreters found."
@@ -212,7 +212,7 @@ function Install-Tacoupdate
     if ((Out-String -InputObject (& 'C:\Program Files\tacoscript\bin\tacoscript.exe' --version)) -match "Version: (.*)")
     {
         $tacoVersion = $matches[1].trim()
-        $tacoUpdateUrl = "https://downloads.rport.io/tacoscript/$( $release )/?arch=Windows_x86_64&gt=$tacoVersion"
+        $tacoUpdateUrl = "https://downloads.openrport.io/tacoscript/$( $release )/?arch=Windows_x86_64&gt=$tacoVersion"
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         Invoke-WebRequest -Uri $tacoUpdateUrl -OutFile $tacoUpdate -UseBasicParsing
         If ((Get-Item tacoupdate.zip).length -eq 0)
@@ -242,7 +242,7 @@ function Install-Tacoscript
     }
     $Temp = [System.Environment]::GetEnvironmentVariable('TEMP', 'Machine')
     Set-Location $Temp
-    $url = "https://download.rport.io/tacoscript/$( $release )/?arch=Windows_x86_64"
+    $url = "https://download.openrport.io/tacoscript/$( $release )/?arch=Windows_x86_64"
     $file = $temp + "\tacoscript.zip"
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     Invoke-WebRequest -Uri $url -OutFile $file -UseBasicParsing
@@ -459,11 +459,6 @@ function Enable-Network-Monitoring
         [Parameter(Mandatory)]
         [Object[]]$ConfigContent
     )
-    if (-Not([System.Version]$targetVersion -ge [System.Version]"0.5.8"))
-    {
-        Write-Information "* RPort version $targetVersion does not support Lan/Wan Monitoring"
-        return
-    }
     if ($ConfigContent -match "^\s*net_[lw]an")
     {
         Write-Information "* Network Monitoring already enabled."
@@ -521,6 +516,135 @@ function Get-HostUUID
 function Optimize-ServiceStartup
 {
     param()
+    #@formatter:off
     & sc.exe config rport start= delayed-auto
     & sc.exe failure rport reset= 0 actions= restart/5000
+    #@formatter:on
+}
+
+function Invoke-Download
+{
+    Param(
+        [Parameter()]
+        [string]$gt = "0",
+        [string]$pkgUrl
+    )
+    $Headers = @{ }
+    if ($pkgUrl)
+    {
+        # Download from a custom URL given by global switch
+        if ($pkgUrl -match ("^http.*windows_x86_64.zip"))
+        {
+            $downloadFile = "C:\Windows\temp\rport_Windows_x86_64.zip"
+        }
+        elseif ($pkgUrl -match ("^http.*windows_x86_64.msi"))
+        {
+            $downloadFile = "C:\Windows\temp\rport_Windows_x86_64.msi"
+        }
+        else
+        {
+            Write-Error "PkgUrl $( $pkgUrl ) is not a valid rport download url."
+        }
+        $url = $pkgUrl
+        if ($env:RPORT_INSTALLER_DL_USERNAME -and $env:RPORT_INSTALLER_DL_PASSWORD)
+        {
+            $pair = "$( $env:RPORT_INSTALLER_DL_USERNAME ):$( $env:RPORT_INSTALLER_DL_PASSWORD )"
+            $encodedCreds = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($pair))
+            $basicAuthValue = "Basic $encodedCreds"
+            $Headers = @{
+                Authorization = $basicAuthValue
+            }
+            Write-Information "* Downloading using HTTP basic auth"
+        }
+    }
+    else
+    {
+        $downloadFile = "C:\Windows\temp\rport_$( $release )_Windows_x86_64.msi"
+        $url = "https://downloads.openrport.io/rport/$( $release )/latest.php?filter=Windows_x86_64.msi&gt=$( $gt )"
+    }
+
+    if (Test-Path $downloadFile -PathType leaf)
+    {
+        Remove-Item $downloadFile -Force
+    }
+    Write-Information "* Downloading  $( $url )."
+    $ProgressPreference = 'SilentlyContinue'
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $downloadFile -Headers $Headers
+    return $downloadFile
+}
+
+# Create an uninstaller script for rport
+function New-Uninstaller
+{
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
+
+    Set-Content -Path "$( $installDir )\uninstall.bat" -Value '
+ECHO off
+net session > NUL
+IF %ERRORLEVEL% EQU 0 (
+    ECHO You are Administrator. Fine ...
+) ELSE (
+    ECHO You are NOT Administrator. Exiting...
+    PING -n 5 127.0.0.1 > NUL 2>&1
+    EXIT /B 1
+)
+echo Removing rport now
+ping -n 5 127.0.0.1 > null
+sc stop rport
+"%PROGRAMFILES%"\rport\rport.exe --service uninstall -c "%PROGRAMFILES%"\rport\rport.conf
+cd C:\
+rmdir /S /Q "%PROGRAMFILES%"\rport\
+echo RPort removed
+ping -n 2 127.0.0.1 > null
+'
+    Write-Output "* Uninstaller created in $( $installDir )\uninstall.bat."
+}
+
+function New-PSScriptFile
+{
+    [CmdletBinding(SupportsShouldProcess)]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [string] $Path,
+        [Parameter(Mandatory = $true)]
+        [string] $ScriptBlock
+    )
+    $ScriptBlock.Split("`n") | ForEach-Object {
+        if ($_)
+        {
+            $_.Trim() | Out-File -FilePath $Path -Append
+        }
+    }
+    $null = $Path
+}
+
+function Get-MSIVersionInfo
+{
+    param (
+        [parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [System.IO.FileInfo] $path
+    )
+    if (!(Test-Path $path.FullName))
+    {
+        throw "File '{0}' does not exist" -f $path.FullName
+    }
+    try
+    {
+        $WindowsInstaller = New-Object -com WindowsInstaller.Installer
+        $Database = $WindowsInstaller.GetType().InvokeMember("OpenDatabase", "InvokeMethod", $Null, $WindowsInstaller, @($path.FullName, 0))
+        $Query = "SELECT Value FROM Property WHERE Property = 'ProductVersion'"
+        $View = $database.GetType().InvokeMember("OpenView", "InvokeMethod", $Null, $Database, ($Query))
+        $View.GetType().InvokeMember("Execute", "InvokeMethod", $Null, $View, $Null) | Out-Null
+        $Record = $View.GetType().InvokeMember("Fetch", "InvokeMethod", $Null, $View, $Null)
+        $Version = $Record.GetType().InvokeMember("StringData", "GetProperty", $Null, $Record, 1)
+        return $Version
+    }
+    catch
+    {
+        throw "Failed to get MSI file version: {0}." -f $_
+    }
 }

@@ -3,7 +3,7 @@ CURRENT_VERSION=$(/usr/local/bin/rport --version | awk '{print $2}')
 download_package() {
   if [ "$VERSION" != "undef" ]; then
     RELEASE=custom
-    URL="https://github.com/cloudradar-monitoring/rport/releases/download/${VERSION}/rport_${VERSION}_Linux_${ARCH}.tar.gz"
+    URL="https://github.com/openrport/openrport/releases/download/${VERSION}/rport_${VERSION}_Linux_${ARCH}.tar.gz"
     if curl -fI "$URL" >/dev/null 2>&1; then
       true
     else
@@ -11,9 +11,22 @@ download_package() {
       exit 1
     fi
   else
-    URL="https://download.rport.io/rport/${RELEASE}/?arch=Linux_${ARCH}&gt=${CURRENT_VERSION}"
+    URL="https://download.openrport.io/rport/${RELEASE}/latest.php?arch=Linux_${ARCH}"
   fi
   curl -Ls "${URL}" -o rport.tar.gz
+}
+
+current_version() {
+    if [ -e /usr/bin/rport ]; then
+        /usr/bin/rport --version | awk '{print $2}'
+        return 0
+    fi
+    if [ -e /usr/local/bin/rport ]; then
+        /usr/local/bin/rport --version | awk '{print $2}'
+        return 0
+    fi
+    echo "Failed to get current rport version"
+    exit 1
 }
 
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
@@ -24,18 +37,23 @@ download_package() {
 #       RETURNS:
 #----------------------------------------------------------------------------------------------------------------------
 restart_rport() {
-  if [ -e /etc/init.d/rport ]; then
-    RESTART_CMD='/etc/init.d/rport restart'
-  else
-    RESTART_CMD='systemctl restart rport'
-  fi
-  if command -v at >/dev/null 2>&1; then
-    echo "$RESTART_CMD" | at now +1 minute
-    echo "Restart of rport scheduled via atd."
-  else
-    nohup sh -c "sleep 10;$RESTART_CMD" >/dev/null 2>&1 &
-    echo "Restart of rport scheduled via nohup+sleep."
-  fi
+    if [ -e /etc/init.d/rport ]; then
+        RESTART_CMD='/etc/init.d/rport restart'
+    else
+        RESTART_CMD='systemctl restart rport'
+    fi
+    if [ "$1" = "background" ]; then
+        if command -v at >/dev/null 2>&1; then
+            echo "$RESTART_CMD" | at now +1 minute
+            throw_info "Restart of rport scheduled via atd."
+        else
+            nohup sh -c "sleep 10;$RESTART_CMD" >/dev/null 2>&1 &
+            throw_info "Restart of rport scheduled via nohup+sleep."
+        fi
+        return 0
+    fi
+    throw_info "Restarting RPort using '$RESTART_CMD'"
+    $RESTART_CMD
 }
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
 #          NAME:  update
@@ -45,10 +63,11 @@ update() {
   check_prerequisites
   cd /tmp
   download_package
+  RESTART_IN="background"
   test -e rport && rm -f rport
   if tar xzf rport.tar.gz rport 2>/dev/null; then
     TARGET_VERSION=$(./rport --version | awk '{print $2}')
-    echo "Updating from ${CURRENT_VERSION} to latest ${RELEASE} $(./rport --version)"
+    throw_info "Updating from ${CURRENT_VERSION} to latest ${RELEASE} $(./rport --version)"
     check_scripts
     check_sudo
     create_sudoers_updates
@@ -58,9 +77,9 @@ update() {
     enable_file_reception
     insert_watchdog
     mv -f /tmp/rport /usr/local/bin/rport
-    restart_rport
+    restart_rport $RESTART_IN
   else
-    echo "Nothing to do. RPort is on the latest version ${CURRENT_VERSION}."
+    throw_info "Nothing to do. RPort is on the latest version ${CURRENT_VERSION}."
     [ "$ENABLE_TACOSCRIPT" -eq 1 ] && install_tacoscript
     exit 0
   fi
@@ -122,6 +141,7 @@ check_scripts() {
   else
     echo 1>&2 "Please use the switches -x/-d to enable or disable script execution."
     help
+    # shellcheck disable=SC2317  # Don't warn about unreachable commands in this function
     exit 1
   fi
   if ask_yes_no "Do you want to activate script execution?"; then
@@ -147,6 +167,7 @@ check_sudo() {
   else
     echo 1>&2 "Please use the switches -s/-n to enable or disable sudo rights."
     help
+    # shellcheck disable=SC2317  # Don't warn about unreachable commands in this function
     exit 1
   fi
   if ask_yes_no "Do you want to activate sudo rights for RPort remote script execution?"; then
@@ -228,7 +249,7 @@ insert_watchdog() {
   ## Write a state file to {data_dir}/state.json that can be evaluated by external watchdog implementations.
   ## On Linux this also enables the systemd watchdog integration using the systemd notify socket.
   ## Requires max_retry_count = -1 and keep_alive > 0
-  ## Read more https://oss.rport.io/advanced/watchdog-integration/
+  ## Read more https://oss.openrport.io/advanced/watchdog-integration/
   ## Disabled by default.
   #watchdog_integration = false
 EOF
@@ -248,10 +269,10 @@ finish() {
 #
 #  Logs are written to /var/log/rport/rport.log.
 #
-#  READ THE DOCS ON https://kb.rport.io/
+#  READ THE DOCS ON https://kb.openrport.io/
 #
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#  Give us a star on https://github.com/cloudradar-monitoring/rport
+#  Give us a star on https://github.com/openrport/openrport
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #
 
@@ -279,7 +300,7 @@ Try the following to investigate:
 
 2) tail /var/log/rport/rport.log
 
-3) Ask for help on https://kb.rport.io/need-help/request-support
+3) Ask for help on https://kb.oppenrport.io/need-help/request-support
 "
   if runs_with_selinux; then
     echo "

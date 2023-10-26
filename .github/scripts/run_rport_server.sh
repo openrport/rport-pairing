@@ -6,7 +6,7 @@ trap 'echo "exit $? due to $previous_command"' EXIT
 # Run a local instance of the RPort server to test if the pairing scripts successfully connects to this server.
 #
 cd /tmp
-curl -Ls "https://download.rport.io/rportd/stable/?arch=Linux_x86_64" -o rportd.tar.gz
+curl -Ls "https://download.openrport.io/rportd/stable/latest.php?arch=x86_64" -o rportd.tar.gz
 tar xvzf rportd.tar.gz rportd
 mkdir /tmp/rport-data
 cat<<EOF>rportd.conf

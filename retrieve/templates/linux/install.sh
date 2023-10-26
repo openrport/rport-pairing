@@ -40,16 +40,16 @@ test_connection() {
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
 #          NAME:  download_and_extract
 #   DESCRIPTION:  Download the package from Github and unpack to the temp folder
-#                 https://downloads.rport.io/ acts a redirector service
+#                 https://downloads.openrport.io/ acts a redirector service
 #                 returning the real download URL of GitHub in a more handy fashion
 #----------------------------------------------------------------------------------------------------------------------
 download_and_extract() {
   cd "${TMP_FOLDER}"
   # Download the tar.gz package
   if is_available curl; then
-    curl -LSs "https://downloads.rport.io/rport/${RELEASE}/latest.php?arch=Linux_${ARCH}" -o rport.tar.gz
+    curl -LSs "https://downloads.openrport.io/rport/${RELEASE}/latest.php?arch=Linux_${ARCH}" -o rport.tar.gz
   elif is_available wget; then
-    wget -q "https://downloads.rport.io/rport/${RELEASE}/latest.php?arch=Linux_${ARCH}" -O rport.tar.gz
+    wget -q "https://downloads.openrport.io/rport/${RELEASE}/latest.php?arch=Linux_${ARCH}" -O rport.tar.gz
   else
     abort "No download tool found. Install curl or wget."
   fi
@@ -57,6 +57,37 @@ download_and_extract() {
   tar xzf rport.tar.gz
 }
 
+#---  FUNCTION  -------------------------------------------------------------------------------------------------------
+#          NAME:  download_and_extract_from_url
+#   DESCRIPTION:  Download the package from any URL and unpack to the temp folder
+#----------------------------------------------------------------------------------------------------------------------
+download_and_extract_from_url() {
+    cd "${TMP_FOLDER}"
+    ARCH=$(uname -m)
+    DL_AUTH=""
+    DL="rport.tar.gz"
+    # Use a specific version
+    if echo "$PKG_URL" | grep -q -E "^https?:\/\/.*\_linux_${ARCH}.tar.gz"; then
+        DOWNLOAD_URL="$PKG_URL"
+    else
+        echo "PKG_URL does not match 'http(s)://... _linux_${ARCH}.tar.gz'"
+        abort "Invalid download URL."
+    fi
+    if [ -n "$RPORT_INSTALLER_DL_USERNAME" ] && [ -n "$RPORT_INSTALLER_DL_PASSWORD" ]; then
+        DL_AUTH="-u ${RPORT_INSTALLER_DL_USERNAME}:${RPORT_INSTALLER_DL_PASSWORD}"
+        confirm "Download will use HTTP basic authentication"
+    fi
+    echo "Downloading from ${DOWNLOAD_URL}"
+    [ -e "${DL}" ] && rm -f "${DL}"
+    # shellcheck disable=SC2086
+    curl -LSs "${DOWNLOAD_URL}" -o "${DL}" ${DL_AUTH}
+    echo "Verifying download"
+    FILES_IN_TAR=$(tar tzf "${DL}")
+    confirm "Package contains $(echo "$FILES_IN_TAR" | wc -w) files"
+    tar xzf "${DL}" rport
+    tar xzf "${DL}" rport.example.conf
+    rm -f "${DL}"
+}
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
 #          NAME:  install_bin
 #   DESCRIPTION:  Install a binary located in the temp folder to /usr/local/bin
@@ -81,14 +112,17 @@ install_bin() {
 #    PARAMETERS:  config name relative to the temp folder without suffix .example.conf
 #----------------------------------------------------------------------------------------------------------------------
 install_config() {
-  test -e "$CONF_DIR" || mkdir "$CONF_DIR"
-  CONFIG_FILE=${CONF_DIR}/${1}.conf
-  if [ -e "${CONFIG_FILE}" ]; then
-    mv "${CONFIG_FILE}" "${CONFIG_FILE}".bak
-    confirm "Old config has been backed up to ${CONFIG_FILE}.bak"
-  fi
-  mv "${TMP_FOLDER}/rport.example.conf" "${CONFIG_FILE}"
-  confirm "${CONFIG_FILE} created."
+    test -e "$CONF_DIR" || mkdir "$CONF_DIR"
+    CONFIG_FILE=${CONF_DIR}/${1}.conf
+    if [ -e "${CONFIG_FILE}" ]; then
+        true
+    elif [ -e "${TMP_FOLDER}/rport.example.conf" ]; then
+        mv "${TMP_FOLDER}/rport.example.conf" "${CONFIG_FILE}"
+    else
+        throw_hint "If you have used the RPort RPM or DEB package previously, remove it first using the package manager."
+        throw_fatal "No rport.conf file found."
+    fi
+    confirm "${CONFIG_FILE} created."
 }
 
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
@@ -109,15 +143,29 @@ create_user() {
       abort "No command found to add a user"
     fi
   fi
-  test -e "$LOG_DIR" || mkdir -p "$LOG_DIR"
-  test -e /var/lib/rport/scripts || mkdir -p /var/lib/rport/scripts
-  chown "${USER}":root "$LOG_DIR"
-  chown "${USER}":root /var/lib/rport/scripts
-  chmod 0700 /var/lib/rport/scripts
-  chown "${USER}":root "$CONFIG_FILE"
-  chmod 0640 "$CONFIG_FILE"
-  chown root:root /usr/local/bin/rport
-  chmod 0755 /usr/local/bin/rport
+#  test -e "$LOG_DIR" || mkdir -p "$LOG_DIR"
+#  test -e /var/lib/rport/scripts || mkdir -p /var/lib/rport/scripts
+#  chown "${USER}":root "$LOG_DIR"
+#  chown "${USER}":root /var/lib/rport/scripts
+#  chmod 0700 /var/lib/rport/scripts
+#  chown "${USER}":root "$CONFIG_FILE"
+#  chmod 0640 "$CONFIG_FILE"
+#  chown root:root /usr/local/bin/rport
+#  chmod 0755 /usr/local/bin/rport
+}
+
+set_file_and_dir_owner() {
+    test -e "$LOG_DIR" || mkdir -p "$LOG_DIR"
+    test -e /var/lib/rport/scripts || mkdir -p /var/lib/rport/scripts
+    chown "${USER}":root "$LOG_DIR"
+    chown "${USER}":root /var/lib/rport/scripts
+    chmod 0700 /var/lib/rport/scripts
+    chown "${USER}":root "$CONFIG_FILE"
+    chmod 0640 "$CONFIG_FILE"
+    if [ -e /usr/local/bin/rport ]; then
+        chown root:root /usr/local/bin/rport
+        chmod 0755 /usr/local/bin/rport
+    fi
 }
 
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
@@ -125,10 +173,14 @@ create_user() {
 #   DESCRIPTION:  Install a systemd service file
 #----------------------------------------------------------------------------------------------------------------------
 create_systemd_service() {
-  echo "Installing systemd service for rport"
-  test -e /etc/systemd/system/rport.service && rm -f /etc/systemd/system/rport.service
-  /usr/local/bin/rport --service install --service-user "${USER}" --config /etc/rport/rport.conf
-  start_rport
+    if [ -e /lib/systemd/system/rport.service ]; then
+        echo "Systemd service already present."
+    else
+        echo "Installing systemd service for rport"
+        test -e /etc/systemd/system/rport.service && rm -f /etc/systemd/system/rport.service
+        /usr/local/bin/rport --service install --service-user "${USER}" --config /etc/rport/rport.conf
+    fi
+    start_rport
 }
 
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
@@ -198,18 +250,28 @@ prepare_config() {
     fi
   fi
 
-  if get_geodata; then
-    if [ -n "$TAGS" ]; then
-      TAGS=$(printf "%s:%s:%s" "$TAGS" "$COUNTRY" "$CITY")
-    else
-      TAGS=$(printf "%s:%s" "$COUNTRY" "$CITY")
+  # Activate client attributes
+    if get_geodata; then
+        LABELS="\"city\":\"${CITY}\", \"country\":\"${COUNTRY}\""
     fi
-  fi
-  if [ -n "$TAGS" ]; then
-    # shellcheck disable=SC2001
-    TAGS='["'$(echo "$TAGS" | sed s/":"/\",\"/g)'"]'
-    sed -i "s/#tags = .*/tags = ${TAGS}/g" "$CONFIG_FILE"
-  fi
+    if [ -n "$XTAG" ]; then
+        XTAG="\"$XTAG\""
+    fi
+    CLIENT_ATTRIBUTES="/var/lib/rport/client_attributes.json"
+    if [ -e /var/lib/rport ]; then
+        true
+    else
+        mkdir /var/lib/rport
+        chown "${USER}":root /var/lib/rport
+    fi
+    cat <<EOF >$CLIENT_ATTRIBUTES
+{
+  "tags": [${TAGS}],
+  "labels": { ${LABELS} }
+}
+EOF
+    sed -i "s|#attributes_file_path = \"/var/.*|attributes_file_path = \"${CLIENT_ATTRIBUTES}\"|g" "$CONFIG_FILE"
+    chown "${USER}" "${CLIENT_ATTRIBUTES}"
 }
 
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
@@ -257,18 +319,19 @@ install_client() {
     echo ""
     echo "Your system has SELinux enabled. This installer will not create the needed policies."
     echo "Rport will not connect with out the right policies."
-    echo "Read more https://kb.rport.io/digging-deeper/advanced-client-management/run-with-selinux"
+    echo "Read more https://kb.openrport.io/digging-deeper/advanced-client-management/run-with-selinux"
     echo "Excute '$0 ${RAW_ARGS} -l' to skip this warning and install anyways. You must create the polcies later."
     exit 1
   fi
   test_connection
   download_and_extract
   install_bin rport
+  create_user
   install_config rport
   prepare_config
   enable_lan_monitoring
   detect_interpreters
-  create_user
+  set_file_and_dir_owner
   if is_available openrc; then
     create_openrc_service
   else
@@ -383,8 +446,13 @@ Options:
 -l  Install with SELinux enabled.
 -g <TAG> Add an extra tag to the client.
 -d Do not use /etc/machine-id to identify this machine. A random UUID will be used instead.
+-z  Download the rport client tar.gz from the given URL instead of using GitHub releases. See environment variables.
 
-Learn more https://kb.rport.io/connecting-clients#advanced-pairing-options
+Environment variables:
+  If RPORT_INSTALLER_DL_USERNAME and RPORT_INSTALLER_DL_PASSWORD are set, downloads of custom packages triggered with
+  '-z' are initiated with HTTP basic authentication.
+
+Learn more https://kb.openrport.io/connecting-clients#advanced-pairing-options
 EOF
   exit 0
 }
@@ -403,10 +471,10 @@ finish() {
 #  Look at $CONFIG_FILE and explore all options.
 #  Logs are written to /var/log/rport/rport.log.
 #
-#  READ THE DOCS ON https://kb.rport.io/
+#  READ THE DOCS ON https://kb.openrport.io/
 #
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#  Give us a star on https://github.com/cloudradar-monitoring/rport
+#  Give us a star on https://github.com/openrport/openrport
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #
 
@@ -470,7 +538,9 @@ SELINUX_FORCE=0
 ENABLE_FILEREC=0
 ENABLE_FILEREC_SUDO=0
 TAGS=""
-while getopts 'hvfcsuxstildrba:g:' opt; do
+XTAG=""
+NO_REPO=0
+while getopts 'phvfcsuxstildrba:g:z:' opt; do
   case "${opt}" in
 
   h)
@@ -492,8 +562,10 @@ while getopts 'hvfcsuxstildrba:g:' opt; do
   r) ENABLE_FILEREC=1 ;;
   b) ENABLE_FILEREC_SUDO=1 ;;
   a) USER=${OPTARG} ;;
-  g) TAGS=${OPTARG} ;;
+  g) XTAG=${OPTARG} ;;
+  z) export PKG_URL="${OPTARG}" ;;
   d) MACHINE_ID=gen_uuid ;;
+  p) NO_REPO=1 ;;
 
   \?)
     echo "Option does not exist."

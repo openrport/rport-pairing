@@ -1,4 +1,58 @@
 set -e
+if which tput >/dev/null 2>&1; then
+    true
+else
+    alias tput=true
+fi
+
+throw_fatal() {
+    echo 2>&1 "[!] $1"
+    echo "[=] Fatal Exit. Don't give up. Good luck with the next try."
+    false
+}
+
+throw_hint() {
+    echo "[>] $1"
+}
+
+throw_info() {
+    echo "$(tput setab 2 2>/dev/null)$(tput setaf 7 2>/dev/null)[*]$(tput sgr 0 2>/dev/null) $1"
+}
+
+throw_warning() {
+    echo "[:] $1"
+}
+
+throw_debug() {
+    echo "$(tput setab 4 2>/dev/null)$(tput setaf 7 2>/dev/null)[-]$(tput sgr 0 2>/dev/null) $1"
+}
+
+wait_for_rport() {
+    i=0
+    while [ "$i" -lt 40 ]; do
+        pidof rport >/dev/null 2>&1 && return 0
+        echo "$i waiting for rport process to come up ..."
+        sleep 0.2
+        i=$((i + 1))
+    done
+    return 1
+}
+
+is_rport_subprocess() {
+    if [ -n "$1" ]; then
+        SEARCH_PID=$1
+    else
+        SEARCH_PID=$$
+    fi
+    PARENT_PID=$(ps -o ppid= -p "$SEARCH_PID" | tr -d ' ')
+    PARENT_NAME=$(ps -p "$PARENT_PID" -o comm=)
+    if [ "$PARENT_NAME" = "rport" ]; then
+        return 0
+    elif [ "$PARENT_PID" -eq 1 ]; then
+        return 1
+    fi
+    is_rport_subprocess "$PARENT_PID"
+}
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
 #          NAME:  is_available
 #   DESCRIPTION:  Check if a command is available on the system.
@@ -34,7 +88,8 @@ uninstall() {
     /usr/local/bin/tacoscript
     /etc/init.d/rport
     /var/run/rport.pid
-    /etc/runlevels/default/rport"
+    /etc/runlevels/default/rport
+    /etc/apt/sources.list.d/rport.list"
   for FILE in $FILES; do
     if [ -e "$FILE" ]; then
       rm -f "$FILE" && echo " [ DELETED ] File $FILE"
@@ -60,6 +115,9 @@ uninstall() {
       rm -rf "$FOLDER" && echo " [ DELETED ] Folder $FOLDER"
     fi
   done
+  if dpkg -l 2>&1 | grep -q "rport.*Remote access"; then
+      apt-get -y remove --purge rport
+  fi
   echo "RPort client successfully uninstalled."
 }
 
@@ -97,7 +155,7 @@ has_sudo() {
 create_sudoers_all() {
   SUDOERS_FILE=/etc/sudoers.d/rport-all-cmd
   if [ -e "$SUDOERS_FILE" ]; then
-    echo "You already have a $SUDOERS_FILE. Not changing."
+    throw_info "You already have a $SUDOERS_FILE. Not changing."
     return 1
   fi
 
@@ -121,7 +179,7 @@ ${USER} ALL=(ALL) NOPASSWD:ALL
 create_sudoers_updates() {
   SUDOERS_FILE=/etc/sudoers.d/rport-update-status
   if [ -e "$SUDOERS_FILE" ]; then
-    echo "You already have a $SUDOERS_FILE. Not changing."
+    throw_info "You already have a $SUDOERS_FILE. Not changing."
     return 0
   fi
 
@@ -206,10 +264,10 @@ update_tacoscript() {
   curl -LSso tacoscript.tar.gz "https://download.rport.io/tacoscript/${RELEASE}/?arch=Linux_${ARCH}&gt=$TACO_VERSION"
   if tar xzf tacoscript.tar.gz 2>/dev/null; then
     echo ""
-    echo "Updating Tacoscript from ${TACO_VERSION} to latest ${RELEASE} $(./tacoscript --version | grep -o "Version:.*")"
+    throw_info "Updating Tacoscript from ${TACO_VERSION} to latest ${RELEASE} $(./tacoscript --version | grep -o "Version:.*")"
     mv -f /tmp/tacoscript /usr/local/bin/tacoscript
   else
-    echo "Nothing to do. Tacoscript is on the latest version ${TACO_VERSION}."
+    throw_info "Nothing to do. Tacoscript is on the latest version ${TACO_VERSION}."
   fi
 }
 
@@ -219,7 +277,7 @@ update_tacoscript() {
 #----------------------------------------------------------------------------------------------------------------------
 install_tacoscript() {
   if [ -e /usr/local/bin/tacoscript ]; then
-    echo "Tacoscript already installed. Checking for updates ..."
+    throw_info "Tacoscript already installed. Checking for updates ..."
     update_tacoscript
     return 0
   fi
@@ -418,6 +476,11 @@ start_rport() {
   elif is_available service; then
     service rport start
   fi
+  if pidof rport >/dev/null 2>&1; then
+      return 0
+  else
+      return 1
+  fi
 }
 
 stop_rport() {
@@ -429,4 +492,184 @@ stop_rport() {
   elif is_available service; then
     service rport stop
   fi
+}
+
+backup_config() {
+    if [ -z "$CONFIG_FILE" ]; then
+        throw_fatal "backup_config() \$CONFIG_FILE undefined."
+    fi
+    CONFIG_BACKUP="/tmp/.rport-conf.$(date +%s)"
+    cp "$CONFIG_FILE" "$CONFIG_BACKUP"
+    throw_debug "Configuration file copied to $CONFIG_BACKUP"
+}
+
+clean_up_legacy_installation() {
+    # If this is a migration from the old none deb-based installation, clean up
+    if [ -e /etc/systemd/system/rport.service ]; then
+        throw_info "Removing old systemd service /etc/systemd/system/rport.service"
+        rm -f /etc/systemd/system/rport.service
+        systemctl daemon-reload
+    fi
+    if [ -e /usr/local/bin/rport ]; then
+        throw_info "Removing old version /usr/local/bin/rport"
+        rm -f /usr/local/bin/rport
+    fi
+}
+
+install_via_deb_repo() {
+    if [ -z "$RELEASE" ]; then
+        throw_fatal "install_via_deb_repo() \$RELEASE undefined"
+    fi
+    validate_custom_user
+    if [ -e /etc/apt/trusted.gpg.d/rport.gpg ] && dpkg -l | grep -q rport; then
+        throw_info "System is already using the rport deb repo."
+    else
+        throw_info "RPort will use Debian package ..."
+        # shellcheck source=/dev/null
+        . /etc/os-release
+        if [ -n "$UBUNTU_CODENAME" ]; then
+            CODENAME=$UBUNTU_CODENAME
+        else
+            CODENAME=$VERSION_CODENAME
+        fi
+        curl -sf http://repo.openrport.io/dearmor.gpg >/etc/apt/trusted.gpg.d/rport.gpg
+        echo "deb [signed-by=/etc/apt/trusted.gpg.d/rport.gpg] http://repo.openrport.io/deb ${CODENAME} ${RELEASE}" >/etc/apt/sources.list.d/rport.list
+    fi
+    apt-get update
+    if dpkg -s rport >/dev/null 2>&1 && ! [ -e /etc/rport/rport.conf ]; then
+        throw_warning "Broken DEB package installation found."
+        throw_debug "Will remove old package first."
+        apt-get -y --purge remove rport
+    fi
+    DEBIAN_FRONTEND=noninteractive apt-get --yes -o Dpkg::Options::="--force-confold" install rport
+    TARGET_VERSION=$(rport --version | cut -d" " -f2)
+    clean_up_legacy_installation
+}
+
+install_via_rpm_repo() {
+    if [ -z "$RELEASE" ]; then
+        throw_fatal "install_via_rpm_repo() \$RELEASE undefined"
+    fi
+    validate_custom_user
+    if [ -e /etc/yum.repos.d/rport.repo ] && rpm -qa | grep -q rport; then
+        throw_info "System is already using the rport yum repo."
+    else
+        throw_info "RPort will use RPM package ..."
+        rpm --import https://repo.rport.io/key.gpg
+        cat <<EOF >/etc/yum.repos.d/rport.repo
+[rport-stable]
+name=RPort $RELEASE
+baseurl=http://repo.openrport.io/rpm/$RELEASE/
+enabled=1
+gpgcheck=1
+gpgkey=https://repo.openrport.io/key.gpg
+EOF
+    fi
+    dnf -y install rport --refresh
+    TARGET_VERSION=$(rport --version | cut -d" " -f2)
+    clean_up_legacy_installation
+}
+
+validate_custom_user() {
+    if [ "$USER" != "rport" ]; then
+        throw_fatal "RPM/DEB packages cannot be used with a custom user. Try '-p'"
+    fi
+}
+
+# Check if it's a supported debian system
+is_debian() {
+    if [ "$NO_REPO" -eq 1 ]; then
+        return 1
+    fi
+    if which apt-get >/dev/null 2>&1 && test -e /etc/apt/sources.list.d/; then
+        true
+    else
+        return 1
+    fi
+    DIST_SUPPORTED="jammy focal bionic bullseye buster bookworm"
+    for DIST in $DIST_SUPPORTED; do
+        if grep -qi "CODENAME.*$DIST" /etc/os-release; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+is_rhel() {
+    if [ "$NO_REPO" -eq 1 ]; then
+        return 1
+    fi
+    if grep -q "VERSION=.[6-7]" /etc/os-release; then
+        throw_info "RHEL/CentOS too old for RPM installation. Switching to tar.gz package."
+        return 1
+    fi
+
+    if which rpm >/dev/null 2>&1 && test -e /etc/yum.repos.d; then
+        return 0
+    fi
+    return 1
+}
+
+validate_pkg_url() {
+    if echo "${PKG_URL}" | grep -q -E "https*:\/\/.*_linux_$(uname -m)\.(tar\.gz|deb|rpm)$"; then
+        true
+    else
+        throw_fatal "Invalid PKG_URL '$PKG_URL'."
+    fi
+}
+
+download_pkg_url() {
+    DL_AUTH=""
+    if [ -n "$RPORT_INSTALLER_DL_USERNAME" ] && [ -n "$RPORT_INSTALLER_DL_PASSWORD" ]; then
+        DL_AUTH="-u ${RPORT_INSTALLER_DL_USERNAME}:${RPORT_INSTALLER_DL_PASSWORD}"
+        throw_info "Download will use HTTP basic authentication"
+    fi
+    throw_info "Downloading from ${PKG_URL} ..."
+    PKG_DOWNLOAD=$(mktemp)
+    # shellcheck disable=SC2086
+    curl -LSs "${PKG_URL}" ${DL_AUTH} >${PKG_DOWNLOAD}
+    if [ -n "$(find "${PKG_DOWNLOAD}" -empty)" ]; then
+        rm -f "${PKG_DOWNLOAD}"
+        throw_fatal "Download to ${PKG_DOWNLOAD} failed"
+    fi
+    throw_info "Download to ${PKG_DOWNLOAD} completed"
+}
+
+install_from_deb_download() {
+    validate_pkg_url
+    if echo "${PKG_URL}" | grep -q "deb$"; then
+        true
+    else
+        throw_fatal "URL not pointing to a debian package"
+    fi
+    download_pkg_url
+    mv "${PKG_DOWNLOAD}" "${PKG_DOWNLOAD}".deb
+    PKG_DOWNLOAD=${PKG_DOWNLOAD}.deb
+    chmod 0644 "${PKG_DOWNLOAD}"
+    throw_info "Installing debian package ${PKG_DOWNLOAD}"
+    DEBIAN_FRONTEND=noninteractive apt-get --yes -o Dpkg::Options::="--force-confold" install "${PKG_DOWNLOAD}"
+    rm -f "${PKG_DOWNLOAD}"
+    clean_up_legacy_installation
+}
+
+install_from_rpm_download() {
+    validate_pkg_url
+    if echo "${PKG_URL}" | grep -q "rpm$"; then
+        true
+    else
+        throw_fatal "URL not pointing to an rpm package"
+    fi
+    download_pkg_url
+    throw_info "Installing rpm package"
+    rpm -U "${PKG_DOWNLOAD}"
+    rm -f "${PKG_DOWNLOAD}"
+    clean_up_legacy_installation
+}
+
+abort_on_rport_subprocess() {
+    if is_rport_subprocess; then
+        throw_hint "Execute the rport update in a process decoupled from its parent, e.g."
+        throw_hint '  nohup sh -c "curl -s https://pairing.openrport.io/update|sh" >/tmp/rport-update.log 2>&1 &'
+        throw_fatal "You cannot update rport from an rport subprocess."
+    fi
 }

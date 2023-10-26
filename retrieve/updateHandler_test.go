@@ -2,7 +2,7 @@ package retrieve_test
 
 import (
 	"fmt"
-	"github.com/cloudradar-monitoring/rport-pairing/retrieve"
+	"github.com/openrport/rport-pairing/retrieve"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
