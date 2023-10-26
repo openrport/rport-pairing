@@ -63,10 +63,11 @@ update() {
   check_prerequisites
   cd /tmp
   download_package
+  RESTART_IN="background"
   test -e rport && rm -f rport
   if tar xzf rport.tar.gz rport 2>/dev/null; then
     TARGET_VERSION=$(./rport --version | awk '{print $2}')
-    echo "Updating from ${CURRENT_VERSION} to latest ${RELEASE} $(./rport --version)"
+    throw_info "Updating from ${CURRENT_VERSION} to latest ${RELEASE} $(./rport --version)"
     check_scripts
     check_sudo
     create_sudoers_updates
@@ -76,9 +77,9 @@ update() {
     enable_file_reception
     insert_watchdog
     mv -f /tmp/rport /usr/local/bin/rport
-    restart_rport
+    restart_rport $RESTART_IN
   else
-    echo "Nothing to do. RPort is on the latest version ${CURRENT_VERSION}."
+    throw_info "Nothing to do. RPort is on the latest version ${CURRENT_VERSION}."
     [ "$ENABLE_TACOSCRIPT" -eq 1 ] && install_tacoscript
     exit 0
   fi

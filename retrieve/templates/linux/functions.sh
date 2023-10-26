@@ -155,7 +155,7 @@ has_sudo() {
 create_sudoers_all() {
   SUDOERS_FILE=/etc/sudoers.d/rport-all-cmd
   if [ -e "$SUDOERS_FILE" ]; then
-    echo "You already have a $SUDOERS_FILE. Not changing."
+    throw_info "You already have a $SUDOERS_FILE. Not changing."
     return 1
   fi
 
@@ -179,7 +179,7 @@ ${USER} ALL=(ALL) NOPASSWD:ALL
 create_sudoers_updates() {
   SUDOERS_FILE=/etc/sudoers.d/rport-update-status
   if [ -e "$SUDOERS_FILE" ]; then
-    echo "You already have a $SUDOERS_FILE. Not changing."
+    throw_info "You already have a $SUDOERS_FILE. Not changing."
     return 0
   fi
 
@@ -264,10 +264,10 @@ update_tacoscript() {
   curl -LSso tacoscript.tar.gz "https://download.rport.io/tacoscript/${RELEASE}/?arch=Linux_${ARCH}&gt=$TACO_VERSION"
   if tar xzf tacoscript.tar.gz 2>/dev/null; then
     echo ""
-    echo "Updating Tacoscript from ${TACO_VERSION} to latest ${RELEASE} $(./tacoscript --version | grep -o "Version:.*")"
+    throw_info "Updating Tacoscript from ${TACO_VERSION} to latest ${RELEASE} $(./tacoscript --version | grep -o "Version:.*")"
     mv -f /tmp/tacoscript /usr/local/bin/tacoscript
   else
-    echo "Nothing to do. Tacoscript is on the latest version ${TACO_VERSION}."
+    throw_info "Nothing to do. Tacoscript is on the latest version ${TACO_VERSION}."
   fi
 }
 
@@ -277,7 +277,7 @@ update_tacoscript() {
 #----------------------------------------------------------------------------------------------------------------------
 install_tacoscript() {
   if [ -e /usr/local/bin/tacoscript ]; then
-    echo "Tacoscript already installed. Checking for updates ..."
+    throw_info "Tacoscript already installed. Checking for updates ..."
     update_tacoscript
     return 0
   fi
