@@ -41,7 +41,7 @@
         Install and connect with script execution disabled.
 
         .LINK
-        Online help: https://kb.rport.io/connecting-clients#advanced-pairing-options
+        Online help: https://kb.openrport.io/connecting-clients#advanced-pairing-options
 #>
 #Requires -RunAsAdministrator
 # Definition of command line parameters
@@ -52,6 +52,7 @@ Param(
     [switch]$r, # Enable file reception
     [string]$g, # Add a tag
     [switch]$d # Exit after writing the config
+    [string]$pkgUrl
 )
 if ($env:PROCESSOR_ARCHITECTURE -ne "AMD64")
 {

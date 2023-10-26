@@ -7,8 +7,6 @@ Else
     "stable"
 }
 $myLocation = (Get-Location).path
-$url = "https://downloads.rport.io/rport/$( $release )/latest.php?arch=Windows_x86_64"
-$downloadFile = "C:\Windows\temp\rport_$( $release )_Windows_x86_64.zip"
 $installDir = "$( $Env:Programfiles )\rport"
 $dataDir = "$( $installDir )\data"
 
@@ -20,7 +18,7 @@ if (Test-Path $installDir)
     Write-Output "Try the following:"
     Write-Output 'cd $env:temp
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-$url="https://pairing.rport.io/update"
+$url="https://pairing.openrport.io/update"
 Invoke-WebRequest -Uri $url -OutFile "rport-update.ps1"
 powershell -ExecutionPolicy Bypass -File .\rport-update.ps1
 rm .\rport-update.ps1 -Force
@@ -36,7 +34,8 @@ try
 }
 catch
 {
-    if ([int]$_.Exception.Response.StatusCode -eq 404)
+    $status = [int]$_.Exception.Response.StatusCode
+    if ($status -lt 500)
     {
         Write-Output "* Testing connection to $( $connect_url ) has succeeded."
     }
@@ -52,22 +51,35 @@ catch
     }
 }
 # Download the package from GitHub
-if (-not(Test-Path $downloadFile -PathType leaf))
+$downloadFile = Invoke-Download -pkgUrl $pkgUrl
+Write-Information "* Download finished and stored to $( $downloadFile )."
+# Install
+if ($downloadFile -match '\.zip$')
 {
-    Write-Output "* Downloading  $( $url ) ."
-    $ProgressPreference = 'SilentlyContinue'
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    Invoke-WebRequest -Uri $url -OutFile $downloadFile
-    Write-Output "* Download finished and stored to $( $downloadFile ) ."
+    Write-Output "* Installing from ZIP ..."
+    # Create a directory
+    mkdir $installDir| Out-Null
+    mkdir $dataDir| Out-Null
+    # Extract the ZIP file
+    Expand-Zip -Path $downloadFile -DestinationPath $installDir
+    # Create an uninstaller script
+    New-Uninstaller
+    $InstallMethod = 'zip'
 }
-
-# Create a directory
-mkdir $installDir| Out-Null
-mkdir $dataDir| Out-Null
-
-
-# Extract the ZIP file
-Expand-Zip -Path $downloadFile -DestinationPath $installDir
+elseif ($downloadFile -match '\.msi$')
+{
+    # Install the MSI
+    Write-Output "* Installing MSI ..."
+    $msiLog = "$( $downloadFile )-install.log"
+    Start-Process msiexec.exe -Wait -ArgumentList "/i $( $downloadFile ) /qn /quiet /log $( $msiLog )"
+    Write-Output "* MSI installed. Log saved to $( $msiLog )"
+    $InstallMethod = 'msi'
+}
+else
+{
+    Write-Error "Unrecognized file extension for $( $downloadFile )"
+}
+Write-Output "* RPort installed via $InstallMethod"
 $targetVersion = (& "$( $installDir )/rport.exe" --version) -replace "version ", ""
 Write-Output "* RPort Client version $targetVersion installed."
 $configFile = "$( $installDir )\rport.conf"
@@ -101,7 +113,10 @@ else
 }
 # Enable/Disable file reception
 $configContent = Enable-FileReception -ConfigContent $configContent -Switch $r
-$tags = @()
+$attributes = @{
+    'tags' = @()
+    'labels' = @{}
+}
 # Get the location of the server
 $geoUrl = "http://ip-api.com/json/?fields=status,country,city"
 try
@@ -110,8 +125,8 @@ try
     if ("success" -eq $geoData.status)
     {
         # Add geo data as tags
-        $tags += $geoData.country
-        $tags += $geoData.city
+        $attributes.labels.country = $geoData.country
+        $attributes.labels.city = $geoData.city
     }
 }
 catch
@@ -122,15 +137,13 @@ catch
 if ($g)
 {
     # Add a custom tag
-    $tags += $g
+    $attributes.tags += $g
 }
-if ($tags.Length -gt 0)
-{
-    $tagsLine = "tags = [`""
-    $tagsLine += $tags -join "`",`""
-    $tagsLine += "`"]"
-    $configContent = $configContent -replace '#tags = .*', $tagsLine
-}
+$configContent = Set-TomlVar -ConfigContent $configContent `
+  -Block "client" `
+  -Key "attributes_file_path" `
+  -Value "'C:\Program Files\rport\client_attributes.json'"
+[IO.File]::WriteAllLines("C:\Program Files\rport\client_attributes.json", ($attributes|ConvertTo-Json))
 $configContent = Enable-Network-Monitoring -ConfigContent $configContent
 $configContent = Enable-InterpreterAlias -ConfigContent $configContent
 
@@ -140,7 +153,7 @@ $Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
 
 if ($d)
 {
-    # Exit here
+    # in debug mode, exit here if
     Write-Output "Configuration written to $( $configFile )."
     Write-Output "==================================================================================="
     Get-Content $configFile -Raw
@@ -149,9 +162,9 @@ if ($d)
     exit 0
 }
 
-# Register the service
 if (-not(Get-Service rport -erroraction 'silentlycontinue'))
 {
+    # Register the service
     Write-Output ""
     Write-Output "* Registering rport as a windows service."
     & "$( $installDir )\rport.exe" --service install --config $configFile
@@ -165,27 +178,6 @@ else
 Start-Service -Name rport
 Get-Service rport
 
-# Create an uninstaller script for rport
-Set-Content -Path "$( $installDir )\uninstall.bat" -Value 'echo off
-echo off
-net session > NUL
-IF %ERRORLEVEL% EQU 0 (
-    ECHO You are Administrator. Fine ...
-) ELSE (
-    ECHO You are NOT Administrator. Exiting...
-    PING -n 5 127.0.0.1 > NUL 2>&1
-    EXIT /B 1
-)
-echo Removing rport now
-ping -n 5 127.0.0.1 > null
-sc stop rport
-"%PROGRAMFILES%"\rport\rport.exe --service uninstall -c "%PROGRAMFILES%"\rport\rport.conf
-cd C:\
-rmdir /S /Q "%PROGRAMFILES%"\rport\
-echo Rport removed
-ping -n 2 127.0.0.1 > null
-'
-Write-Output "* Uninstaller created in $( $installDir )\uninstall.bat."
 if ($i)
 {
     try
@@ -200,7 +192,10 @@ if ($i)
 }
 # Clean Up
 Remove-Item $downloadFile
-
+if ($msiLog -And (Test-Path $msiLog))
+{
+    Remove-Item $msiLog -Force
+}
 
 function Finish
 {
@@ -215,10 +210,10 @@ function Finish
 #  Look at $( $configFile ) and explore all options.
 #  Logs are written to $( $installDir )/rport.log.
 #
-#  READ THE DOCS ON https://kb.rport.io/
+#  READ THE DOCS ON https://kb.openrport.io/
 #
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-#  Give us a star on https://github.com/cloudradar-monitoring/rport
+#  Give us a star on https://github.com/openrport/openrport
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #
 #
@@ -250,7 +245,7 @@ Try the following to investigate:
 
 3) READ THE DOCS on https://kb.rport.io
 
-4) Request support on https://github.com/cloudradar-monitoring/rport-pairing/discussions/categories/help-needed
+4) Request support on https://github.com/openrport/rport-pairing/discussions/categories/help-needed
 "
 }
 
