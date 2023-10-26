@@ -45,10 +45,10 @@ restart_rport() {
   if [ "$1" = "background" ]; then
     if command -v at >/dev/null 2>&1; then
       echo "$RESTART_CMD" | at now +1 minute
-      echo "Restart of rport scheduled via atd."
+      throw_info "Restart of rport scheduled via atd."
     else
       nohup sh -c "sleep 10;$RESTART_CMD" >/dev/null 2>&1 &
-      echo "Restart of rport scheduled via nohup+sleep."
+      throw_info "Restart of rport scheduled via nohup+sleep."
     fi
     return 0
   fi
