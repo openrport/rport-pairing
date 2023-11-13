@@ -1,4 +1,13 @@
 set -e
+download_new_version() {
+    TEMP=$(mktemp -d)
+    URL="https://download.openrport.io/rport/${RELEASE}/latest.php?filter=Linux_${ARCH}&gt=${CURRENT_VERSION}"
+    curl -Ls "${URL}" -o "${TEMP}/rport.tar.gz"
+    tar xzf "$TEMP/rport.tar.gz" -C "$TEMP" rport
+    rm -f "$TEMP/rport.tar.gz"
+    echo "$TEMP/rport"
+}
+
 CURRENT_VERSION=$(/usr/local/bin/rport --version | awk '{print $2}')
 download_package() {
   if [ "$VERSION" != "undef" ]; then
@@ -60,36 +69,59 @@ restart_rport() {
 #   DESCRIPTION:  update to the latest version or exit if not update available
 #----------------------------------------------------------------------------------------------------------------------
 update() {
+  CURRENT_VERSION=$(current_version)
   check_prerequisites
   cd /tmp
-  download_package
-  RESTART_IN="background"
-  test -e rport && rm -f rport
-  if tar xzf rport.tar.gz rport 2>/dev/null; then
-    TARGET_VERSION=$(./rport --version | awk '{print $2}')
-    throw_info "Updating from ${CURRENT_VERSION} to latest ${RELEASE} $(./rport --version)"
-    check_scripts
-    check_sudo
-    create_sudoers_updates
-    detect_interpreters
-    enable_monitoring
-    enable_lan_monitoring
-    enable_file_reception
-    insert_watchdog
-    mv -f /tmp/rport /usr/local/bin/rport
-    restart_rport $RESTART_IN
-  else
-    throw_info "Nothing to do. RPort is on the latest version ${CURRENT_VERSION}."
-    [ "$ENABLE_TACOSCRIPT" -eq 1 ] && install_tacoscript
-    exit 0
-  fi
-  rm -f rport.tar.gz
+
+  if is_debian; then
+          abort_on_rport_subprocess
+          RESTART_IN="foreground"
+          if [ -n "$PKG_URL" ]; then
+              throw_info "Updating DEB from custom URL. Checking current version skipped."
+              install_from_deb_download
+          else
+              install_via_deb_repo
+          fi
+      elif is_rhel; then
+          abort_on_rport_subprocess
+          RESTART_IN="foreground"
+          if [ -n "$PKG_URL" ]; then
+              throw_info "Updating RPM from custom URL. Checking current version skipped."
+              install_from_rpm_download
+          else
+              install_via_rpm_repo
+          fi
+      elif [ -z "$(curl -s "https://download.rport.io/rport/${RELEASE}/latest.php?return=version&gt=${CURRENT_VERSION}")" ]; then
+          throw_info "Nothing to do. RPort is on the latest version ${CURRENT_VERSION}."
+          [ "$ENABLE_TACOSCRIPT" -eq 1 ] && install_tacoscript
+          exit 0
+      else
+          # Install from tar.gz
+          NEW_VERSION=$(download_new_version)
+          TARGET_VERSION=$(${NEW_VERSION} --version | awk '{print $2}')
+          throw_info "Updating from ${CURRENT_VERSION} to latest ${RELEASE} ${TARGET_VERSION}"
+          mv "$NEW_VERSION" /usr/local/bin/rport
+          rm -rf "$(dirname "$NEW_VERSION")"
+          RESTART_IN="background"
+      fi
+  check_scripts
+  check_sudo
+  create_sudoers_updates
+  detect_interpreters
+  enable_monitoring
+  enable_lan_monitoring
+  enable_file_reception
+  insert_watchdog
+
   [ "$ENABLE_TACOSCRIPT" -eq 1 ] && install_tacoscript
-  if pidof rport >/dev/null; then
-    finish
-  else
-    fail
+  throw_info "You are now running $(rport --version)"
+
+  restart_rport $RESTART_IN
+  if wait_for_rport; then
+      finish
+      return 0
   fi
+  fail
 }
 
 #---  FUNCTION  -------------------------------------------------------------------------------------------------------
@@ -132,9 +164,13 @@ check_scripts() {
   if grep -q remote-scripts "$CONFIG_FILE"; then
     return 0
   fi
+
   if [ "$ENABLE_SCRIPTS" = 'true' ]; then
-    insert_scripts
-    return 0
+    if grep -q "\[remote-scripts\]" "$CONFIG_FILE"; then
+        insert_scripts
+        return 0
+      fi
+
   fi
   if is_terminal; then
     true
@@ -277,12 +313,14 @@ finish() {
 #
 
 Thanks for using
-  _____  _____           _
- |  __ \|  __ \         | |
- | |__) | |__) |__  _ __| |_
- |  _  /|  ___/ _ \| '__| __|
- | | \ \| |  | (_) | |  | |_
- |_|  \_\_|   \___/|_|   \__|
+   ____                   _____  _____           _
+  / __ \                 |  __ \|  __ \         | |
+ | |  | |_ __   ___ _ __ | |__) | |__) |__  _ __| |_
+ | |  | | '_ \ / _ \ '_ \|  _  /|  ___/ _ \| '__| __|
+ | |__| | |_) |  __/ | | | | \ \| |  | (_) | |  | |_
+  \____/| .__/ \___|_| |_|_|  \_\_|   \___/|_|   \__|
+        | |
+        |_|
 "
 }
 
@@ -328,6 +366,9 @@ Options:
 -d  disable script execution in rport.conf
 -s  create sudo rules to grant full root access to the rport user
 -m  do not install or update tacoscript
+-p  Do not use the RPM/DEB repository. Forces tar.gz installation.
+-z  Download the rport client tar.gz|deb|rpm from the given URL instead of using GitHub releases.
+    See environment variables.
 EOF
   exit 0
 }
@@ -343,11 +384,11 @@ ENABLE_SCRIPTS=undef
 VERSION=undef
 ENABLE_FILEREC=0
 ENABLE_FILEREC_SUDO=0
-while getopts "hcuxdsmrbtv:" opt; do
+NO_REPO=0
+while getopts "phcuxdsmrbtz:" opt; do
   case "${opt}" in
 
   h) ACTION=help ;;
-  v) VERSION=${OPTARG} ;;
   c) ACTION=update ;;
   u) ACTION=uninstall ;;
   x) ENABLE_SCRIPTS=true ;;
@@ -355,8 +396,10 @@ while getopts "hcuxdsmrbtv:" opt; do
   s) ENABLE_SUDO=1 ;;
   t) RELEASE=unstable ;;
   m) ENABLE_TACOSCRIPT=0 ;;
-  r) ENABLE_FILEREC=1 ;;
-  b) ENABLE_FILEREC_SUDO=1 ;;
+  r) export ENABLE_FILEREC=1 ;;
+  b) export ENABLE_FILEREC_SUDO=1 ;;
+  p) NO_REPO=1 ;;
+  z) export PKG_URL="${OPTARG}" ;;
 
   \?)
     echo "Option does not exist."
