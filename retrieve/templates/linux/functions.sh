@@ -532,8 +532,8 @@ install_via_deb_repo() {
         else
             CODENAME=$VERSION_CODENAME
         fi
-        curl -sf http://repo.openrport.io/dearmor.gpg >/etc/apt/trusted.gpg.d/rport.gpg
-        echo "deb [signed-by=/etc/apt/trusted.gpg.d/rport.gpg] http://repo.openrport.io/deb ${CODENAME} ${RELEASE}" >/etc/apt/sources.list.d/rport.list
+        curl -sf https://repo.openrport.io/dearmor.gpg >/etc/apt/trusted.gpg.d/openrport.gpg
+        echo "deb [signed-by=/etc/apt/trusted.gpg.d/openrport.gpg] https://repo.openrport.io/deb ${CODENAME} ${RELEASE}" >/etc/apt/sources.list.d/rport.list
     fi
     apt-get update
     if dpkg -s rport >/dev/null 2>&1 && ! [ -e /etc/rport/rport.conf ]; then
@@ -551,15 +551,15 @@ install_via_rpm_repo() {
         throw_fatal "install_via_rpm_repo() \$RELEASE undefined"
     fi
     validate_custom_user
-    if [ -e /etc/yum.repos.d/rport.repo ] && rpm -qa | grep -q rport; then
+    if [ -e /etc/yum.repos.d/openrport.repo ] && rpm -qa | grep -q rport; then
         throw_info "System is already using the rport yum repo."
     else
         throw_info "RPort will use RPM package ..."
-        rpm --import https://repo.rport.io/key.gpg
+        rpm --import https://repo.openrport.io/key.gpg
         cat <<EOF >/etc/yum.repos.d/rport.repo
 [rport-stable]
 name=RPort $RELEASE
-baseurl=http://repo.openrport.io/rpm/$RELEASE/
+baseurl=https://repo.openrport.io/rpm/$RELEASE/
 enabled=1
 gpgcheck=1
 gpgkey=https://repo.openrport.io/key.gpg

@@ -324,8 +324,24 @@ install_client() {
     exit 1
   fi
   test_connection
-  download_and_extract
-  install_bin rport
+  if [ -n "$PKG_URL" ]; then
+          if is_debian; then
+              install_from_deb_download
+          elif is_rhel; then
+              install_from_rpm_download
+          else
+              download_and_extract_from_url
+              install_bin rport
+          fi
+      elif is_debian; then
+          install_via_deb_repo
+      elif is_rhel; then
+          install_via_rpm_repo
+      else
+          download_and_extract
+          install_bin rport
+  fi
+#  install_bin rport
   create_user
   install_config rport
   prepare_config
@@ -446,6 +462,7 @@ Options:
 -l  Install with SELinux enabled.
 -g <TAG> Add an extra tag to the client.
 -d Do not use /etc/machine-id to identify this machine. A random UUID will be used instead.
+-p  Do not use the RPM/DEB repository. Forces tar.gz installation.
 -z  Download the rport client tar.gz from the given URL instead of using GitHub releases. See environment variables.
 
 Environment variables:
@@ -479,12 +496,15 @@ finish() {
 #
 
 Thanks for using
-  _____  _____           _
- |  __ \|  __ \         | |
- | |__) | |__) |__  _ __| |_
- |  _  /|  ___/ _ \| '__| __|
- | | \ \| |  | (_) | |  | |_
- |_|  \_\_|   \___/|_|   \__|
+   ____                   _____  _____           _
+  / __ \                 |  __ \|  __ \         | |
+ | |  | |_ __   ___ _ __ | |__) | |__) |__  _ __| |_
+ | |  | | '_ \ / _ \ '_ \|  _  /|  ___/ _ \| '__| __|
+ | |__| | |_) |  __/ | | | | \ \| |  | (_) | |  | |_
+  \____/| .__/ \___|_| |_|_|  \_\_|   \___/|_|   \__|
+        | |
+        |_|
+
 "
 }
 
@@ -493,7 +513,7 @@ fail() {
 #
 # -------------!!   ERROR  !!-------------
 #
-# Installation of rport finished with errors.
+# Installation of openrport finished with errors.
 #
 
 Try the following to investigate:
@@ -501,7 +521,7 @@ Try the following to investigate:
 
 2) tail /var/log/rport/rport.log
 
-3) Ask for help on https://kb.rport.io/need-help/request-support
+3) Ask for help on https://kb.openrport.io/need-help/request-support
 "
   if runs_with_selinux; then
     echo "
@@ -537,7 +557,6 @@ INSTALL_TACO=0
 SELINUX_FORCE=0
 ENABLE_FILEREC=0
 ENABLE_FILEREC_SUDO=0
-TAGS=""
 XTAG=""
 NO_REPO=0
 while getopts 'phvfcsuxstildrba:g:z:' opt; do
@@ -564,7 +583,7 @@ while getopts 'phvfcsuxstildrba:g:z:' opt; do
   a) USER=${OPTARG} ;;
   g) XTAG=${OPTARG} ;;
   z) export PKG_URL="${OPTARG}" ;;
-  d) MACHINE_ID=gen_uuid ;;
+  d) MACHINE_ID=$(gen_uuid) ;;
   p) NO_REPO=1 ;;
 
   \?)
