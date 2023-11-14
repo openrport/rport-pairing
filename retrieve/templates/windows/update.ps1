@@ -188,7 +188,7 @@ function Add-FileRecption
   ## Receive files pushed by the server, enabled by default
   # enabled = true
   ## The rport client will reject writing files to any of the following folders and its subfolders.
-  ## https://oss.rport.io/docs/no18-file-upload.html
+  ## https://oss.openrport.io/docs/no18-file-upload.html
   ## Wildcards (glob) are supported.
   ## Linux defaults
   # protected = ['/bin', '/sbin', '/boot', '/usr/bin', '/usr/sbin', '/dev', '/lib*', '/run']
@@ -208,7 +208,7 @@ function Add-Monitoring
     Add-Content -Path $configFile -Value "
 [monitoring]
   ## The rport client can collect and report performance data of the operating system.
-  ## https://oss.rport.io/docs/no17-monitoring.html
+  ## https://oss.openrport.io/docs/no17-monitoring.html
   ## Monitoring is enabled by default
   enabled = true
   ## How often (seconds) monitoring data should be collected.
@@ -278,7 +278,7 @@ function Add-WatchdogIntegration
   ## Write a state file to {data_dir}/state.json that can be evaluated by external watchdog implementations.
   ## On Linux this also enables the systemd watchdog integration by using the systemd notify socket.
   ## Requires max_retry_count = -1 and keep_alive > 0
-  ## Read more https://oss.rport.io/advanced/watchdog-integration/
+  ## Read more https://oss.openrport.io/advanced/watchdog-integration/
   ## Disabled by default.
   #watchdog_integration = false
 "
@@ -392,10 +392,12 @@ Write-Output "
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Thanks for using
-  _____  _____           _
- |  __ \|  __ \         | |
- | |__) | |__) |__  _ __| |_
- |  _  /|  ___/ _ \| '__| __|
- | | \ \| |  | (_) | |  | |_
- |_|  \_\_|   \___/|_|   \__|
+   ____                   _____  _____           _
+  / __ \                 |  __ \|  __ \         | |
+ | |  | |_ __   ___ _ __ | |__) | |__) |__  _ __| |_
+ | |  | | '_ \ / _ \ '_ \|  _  /|  ___/ _ \| '__| __|
+ | |__| | |_) |  __/ | | | | \ \| |  | (_) | |  | |_
+  \____/| .__/ \___|_| |_|_|  \_\_|   \___/|_|   \__|
+        | |
+        |_|
 "
