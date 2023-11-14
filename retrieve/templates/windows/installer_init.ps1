@@ -51,7 +51,7 @@ Param(
     [switch]$i, # Install tacoscript
     [switch]$r, # Enable file reception
     [string]$g, # Add a tag
-    [switch]$d # Exit after writing the config
+    [switch]$d, # Exit after writing the config
     [string]$pkgUrl
 )
 if ($env:PROCESSOR_ARCHITECTURE -ne "AMD64")
