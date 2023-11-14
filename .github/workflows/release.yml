@@ -48,9 +48,9 @@ jobs:
           ssh-add - <<< "$SSH_PRIV_KEY"
           mkdir -p /home/runner/.ssh
           echo "$SSH_KNOWN_HOST">>~/.ssh/known_hosts
-          scp -P ${SSH_PORT} ./dist/rport-pairing_Linux_x86_64.tar.gz ${SSH_USER}@${SSH_HOST}:/tmp
+          scp -P ${SSH_PORT} ./dist/rport-pairing_linux_x86_64.tar.gz ${SSH_USER}@${SSH_HOST}:/tmp
           ssh -p ${SSH_PORT} -l ${SSH_USER} ${SSH_HOST} bash <<EOF
-          sudo tar -xzf /tmp/rport-pairing_Linux_x86_64.tar.gz -C /usr/local/bin rport-pairing
+          sudo tar -xzf /tmp/rport-pairing_linux_x86_64.tar.gz -C /usr/local/bin rport-pairing
           sudo service rport-pairing restart
           rm -f /tmp/rport-pairing_Linux_x86_64.tar.gz
           EOF
