@@ -560,7 +560,7 @@ function Invoke-Download
     else
     {
         $downloadFile = "C:\Windows\temp\rport_$( $release )_Windows_x86_64.msi"
-        $url = "https://downloads.openrport.io/rport/$( $release )/latest.php?filter=Windows_x86_64.msi&gt=$( $gt )"
+        $url = "https://downloads.openrport.io/rport/$( $release )/latest.php?arch=Windows_x86_64.msi&gt=$( $gt )"
     }
 
     if (Test-Path $downloadFile -PathType leaf)
