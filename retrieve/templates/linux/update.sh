@@ -1,7 +1,7 @@
 set -e
 download_new_version() {
     TEMP=$(mktemp -d)
-    URL="https://download.openrport.io/rport/${RELEASE}/latest.php?filter=Linux_${ARCH}&gt=${CURRENT_VERSION}"
+    URL="https://download.openrport.io/rport/${RELEASE}/latest.php?arch=Linux_${ARCH}&gt=${CURRENT_VERSION}"
     curl -Ls "${URL}" -o "${TEMP}/rport.tar.gz"
     tar xzf "$TEMP/rport.tar.gz" -C "$TEMP" rport
     rm -f "$TEMP/rport.tar.gz"
