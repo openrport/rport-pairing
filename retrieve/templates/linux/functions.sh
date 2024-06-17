@@ -261,7 +261,7 @@ update_tacoscript() {
   TACO_VERSION=$(/usr/local/bin/tacoscript --version | grep -o "Version:.*" | awk '{print $2}')
   cd /tmp
   test -e tacoscript.tar.gz && rm -f tacoscript.tar.gz
-  curl -LSso tacoscript.tar.gz "https://download.rport.io/tacoscript/${RELEASE}/?arch=Linux_${ARCH}&gt=$TACO_VERSION"
+  curl -LSso tacoscript.tar.gz "https://download.openrport.io/tacoscript/${RELEASE}/?arch=Linux_${ARCH}&gt=$TACO_VERSION"
   if tar xzf tacoscript.tar.gz 2>/dev/null; then
     echo ""
     throw_info "Updating Tacoscript from ${TACO_VERSION} to latest ${RELEASE} $(./tacoscript --version | grep -o "Version:.*")"
@@ -283,7 +283,7 @@ install_tacoscript() {
   fi
   cd /tmp
   test -e tacoscript.tar.gz && rm -f tacoscript.tar.gz
-  curl -Ls "https://download.rport.io/tacoscript/${RELEASE}/?arch=Linux_${ARCH}" -o tacoscript.tar.gz
+  curl -Ls "https://download.openrport.io/tacoscript/${RELEASE}/?arch=Linux_${ARCH}" -o tacoscript.tar.gz
   tar xvzf tacoscript.tar.gz -C /usr/local/bin/ tacoscript
   rm -f tacoscript.tar.gz
   echo "Tacoscript installed $(/usr/local/bin/tacoscript --version)"
@@ -325,7 +325,7 @@ enable_file_reception() {
   ## Receive files pushed by the server, enabled by default
   # enabled = true
   ## The rport client will reject writing files to any of the following folders and its subfolders.
-  ## https://oss.rport.io/docs/no18-file-reception.html
+  ## https://oss.openrport.io/docs/no18-file-reception.html
   ## Wildcards (glob) are supported.
   ## Linux defaults
   # protected = ['/bin', '/sbin', '/boot', '/usr/bin', '/usr/sbin', '/dev', '/lib*', '/run']
